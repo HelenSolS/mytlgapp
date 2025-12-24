@@ -3,48 +3,62 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <title>SigilCraft TMA</title>
-    <!-- Tailwind CSS -->
+    <title>SigilCraft Elite</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Telegram Web App SDK -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <!-- Babel для компиляции TSX прямо в браузере -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
     <style>
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700;900&family=Space+Grotesk:wght@300;500;700&display=swap');
+
       :root {
-        --tg-theme-bg-color: #0f172a;
-        --tg-theme-text-color: #f8fafc;
-        --tg-theme-hint-color: #64748b;
-        --tg-theme-button-color: #38bdf8;
-        --tg-theme-secondary-bg-color: #1e293b;
+        --tg-theme-bg-color: #05070a;
+        --tg-theme-secondary-bg-color: #0f1218;
+        --tg-theme-text-color: #ffffff;
+        --tg-theme-hint-color: #8b96a5;
+        --tg-theme-button-color: #0ea5e9;
+        --accent-glow: rgba(14, 165, 233, 0.2);
       }
+
       body {
         background-color: var(--tg-theme-bg-color);
+        background-image: 
+          radial-gradient(circle at 50% -20%, rgba(14, 165, 233, 0.15) 0%, transparent 50%),
+          radial-gradient(circle at 0% 100%, rgba(139, 92, 246, 0.1) 0%, transparent 40%);
         color: var(--tg-theme-text-color);
         margin: 0;
         padding: 0;
         overflow: hidden;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        font-family: 'Inter', sans-serif;
+        -webkit-tap-highlight-color: transparent;
       }
-      #root {
-        height: 100vh;
-        height: -webkit-fill-available;
-        display: flex;
-        flex-direction: column;
+
+      .font-magic { font-family: 'Space Grotesk', sans-serif; }
+
+      #root { height: 100vh; display: flex; flex-direction: column; }
+      
+      .glass {
+        background: rgba(255, 255, 255, 0.03);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
       }
-      /* Стили для лоадера, пока Babel думает */
-      .init-loader {
-        position: fixed;
-        inset: 0;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        background: #0f172a;
-        z-index: 999;
-        transition: opacity 0.5s;
+
+      .sigil-portal::after {
+        content: '';
+        position: absolute;
+        inset: -15px;
+        background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+        z-index: -1;
+        animation: pulse-aura 4s ease-in-out infinite;
       }
+
+      @keyframes pulse-aura {
+        0%, 100% { opacity: 0.4; transform: scale(1); }
+        50% { opacity: 0.8; transform: scale(1.05); }
+      }
+
+      .no-scrollbar::-webkit-scrollbar { display: none; }
     </style>
 
     <script type="importmap">
@@ -59,29 +73,9 @@
   }
 }
 </script>
-    <script>
-      // Заглушка для process, чтобы Gemini SDK не выдавал ошибку в браузере
-      window.process = { env: { API_KEY: "" } };
-    </script>
   </head>
   <body>
-    <div id="root">
-      <div class="init-loader" id="loader">
-        <div class="w-10 h-10 border-2 border-sky-500/20 border-t-sky-500 rounded-full animate-spin"></div>
-        <p style="margin-top: 15px; font-size: 10px; font-weight: 900; letter-spacing: 0.2em; color: #38bdf8; text-transform: uppercase;">Initializing Engine...</p>
-      </div>
-    </div>
-    <!-- data-presets="react,typescript" критически важен для компиляции .tsx -->
+    <div id="root"></div>
     <script type="text/babel" data-presets="react,typescript" data-type="module" src="index.tsx"></script>
-    <script>
-      // Убираем лоадер, когда React смонтируется (примерно)
-      window.addEventListener('load', () => {
-        setTimeout(() => {
-          const l = document.getElementById('loader');
-          if(l) l.style.opacity = '0';
-          setTimeout(() => l?.remove(), 500);
-        }, 2000);
-      });
-    </script>
   </body>
 </html>
