@@ -1,0 +1,7 @@
+{
+  "name": "SigilCraft TMA",
+  "description": "High-performance Telegram Mini App for generating magical sigils and artifacts using Gemini 2.5 Flash Image.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
