@@ -1,179 +1,154 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom/client';
 import { GoogleGenAI } from "@google/genai";
-
-// Краткая версия канона для стабильности при первом запуске
-const ELEMENTS = ['Воздух', 'Вода', 'Огонь', 'Земля', 'Эфир', 'Плетение'] as const;
-type ElementType = typeof ELEMENTS[number];
+import { SIGILS_CANON, ElementType } from './sigils-canon';
 
 const twa = (window as any).Telegram?.WebApp;
-const as = (window as any).aistudio;
 
 const App = () => {
-  const [status, setStatus] = useState<'loading' | 'auth' | 'main'>('loading');
   const [loading, setLoading] = useState(false);
   const [image, setImage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [element, setElement] = useState<ElementType>('Воздух');
   const [logs, setLogs] = useState<string[]>([]);
+  const logEndRef = useRef<HTMLDivElement>(null);
 
   const addLog = (msg: string) => {
-    console.log(`[SigilCraft] ${msg}`);
-    setLogs(prev => [...prev.slice(-5), msg]);
+    const time = new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    setLogs(prev => [...prev, `[${time}] ${msg}`].slice(-10));
+    console.log(`[SIGIL-LOG] ${msg}`);
   };
 
   useEffect(() => {
-    const init = async () => {
-      try {
-        addLog("Запуск инициализации...");
-        if (twa) {
-          twa.expand();
-          twa.ready();
-          twa.backgroundColor = '#030712';
-          twa.headerColor = '#030712';
-        }
-
-        if (!as) {
-          addLog("ВНИМАНИЕ: Среда aistudio не найдена.");
-        }
-
-        const hasKey = as ? await as.hasSelectedApiKey() : false;
-        addLog(hasKey ? "Ключ обнаружен" : "Ключ не выбран");
-        setStatus(hasKey ? 'main' : 'auth');
-      } catch (err: any) {
-        addLog("Ошибка инициализации: " + err.message);
-        setError("Ошибка запуска: " + err.message);
-        setStatus('auth'); // Позволим попробовать нажать кнопку
-      }
-    };
-    init();
+    if (twa) {
+      twa.expand();
+      twa.ready();
+      twa.backgroundColor = '#020617';
+      twa.headerColor = '#020617';
+      addLog("Telegram TMA: Ready");
+    }
+    addLog(`API Key: ${process.env.API_KEY ? 'Detected' : 'MISSING'}`);
+    addLog("System initialized.");
   }, []);
 
-  const handleAuth = async () => {
-    addLog("Открытие окна выбора ключа...");
-    try {
-      if (as) {
-        await as.openSelectKey();
-        addLog("Ключ выбран, переход в главный экран.");
-        setStatus('main');
-      } else {
-        throw new Error("Среда aistudio недоступна в этом контексте.");
-      }
-    } catch (e: any) {
-      addLog("Ошибка выбора ключа: " + e.message);
-      setError("Не удалось выбрать ключ: " + e.message);
-    }
-  };
+  useEffect(() => {
+    logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [logs]);
 
   const generateSigil = async () => {
+    if (loading) return;
     setLoading(true);
     setError(null);
-    addLog(`Запрос на генерацию: ${element}`);
+    addLog(`Summoning ${element} sigil...`);
     
     try {
       const apiKey = process.env.API_KEY;
       if (!apiKey) {
-        addLog("API Ключ отсутствует в окружении.");
-        throw new Error("API Ключ не найден. Переавторизуйтесь.");
+        throw new Error("API_KEY_NOT_FOUND: Ключ не передан платформой.");
       }
 
       const ai = new GoogleGenAI({ apiKey });
-      const prompt = `Mystical ancient sigil of ${element}, glowing arcane geometry, dark void background, high quality artifact.`;
+      
+      const elementSigils = SIGILS_CANON.filter(s => s.element === element);
+      const targetSigil = elementSigils[Math.floor(Math.random() * elementSigils.length)] || SIGILS_CANON[0];
+
+      addLog(`Selected: ${targetSigil.name}`);
+
+      const prompt = `Ancient magical sigil of ${targetSigil.name}. 
+        Visual: ${targetSigil.tz}. 
+        Style: Glowing ethereal geometry on dark obsidian, ${targetSigil.aura} energy, high fantasy, artifact.`;
 
       const response = await ai.models.generateContent({
-        model: 'gemini-3-pro-image-preview',
+        model: 'gemini-2.5-flash-image',
         contents: { parts: [{ text: prompt }] },
         config: { imageConfig: { aspectRatio: "1:1" } }
       });
 
-      const imagePart = response.candidates?.[0]?.content?.parts.find(p => p.inlineData);
-      
-      if (imagePart) {
-        addLog("Изображение получено.");
-        setImage(`data:image/png;base64,${imagePart.inlineData.data}`);
-      } else {
-        addLog("API вернул пустой ответ.");
-        throw new Error("Модель не вернула изображение. Проверьте биллинг в консоли Google.");
+      let base64Data = "";
+      if (response.candidates?.[0]?.content?.parts) {
+        for (const part of response.candidates[0].content.parts) {
+          if (part.inlineData) {
+            base64Data = part.inlineData.data;
+            break;
+          }
+        }
       }
+
+      if (base64Data) {
+        setImage(`data:image/png;base64,${base64Data}`);
+        addLog("Artifact materialized successfully.");
+      } else {
+        throw new Error("EMPTY_RESPONSE: Модель не вернула данные изображения.");
+      }
+
     } catch (err: any) {
-      addLog("ОШИБКА: " + err.message);
-      setError(err.message || "Ошибка генерации");
+      const errMsg = err.message || "Unknown Ritual Error";
+      addLog(`ERROR: ${errMsg}`);
+      setError(errMsg);
     } finally {
       setLoading(false);
     }
   };
 
-  if (status === 'loading') {
-    return (
-      <div className="flex flex-col items-center justify-center h-screen bg-[#030712] text-sky-500">
-        <div className="text-3xl mb-4 animate-pulse">✨</div>
-        <div className="text-[10px] font-black uppercase tracking-[0.4em]">Входим в Эфир...</div>
-        <div className="mt-8 text-[8px] text-slate-600 font-mono">{logs.join(' | ')}</div>
-      </div>
-    );
-  }
-
-  if (status === 'auth') {
-    return (
-      <div className="flex flex-col items-center justify-center h-screen p-10 bg-[#030712] text-center">
-        <div className="text-5xl mb-10">🛡️</div>
-        <h1 className="text-xl font-black uppercase mb-4 italic tracking-tight">Нужен Ключ Доступа</h1>
-        <p className="text-slate-500 text-[10px] uppercase mb-10 leading-relaxed tracking-widest">
-          Gemini 3 Pro требует ключ с включенным биллингом.<br/>Без него создание артефактов невозможно.
-        </p>
-        <button 
-          onClick={handleAuth}
-          className="w-full py-5 bg-sky-500 text-black font-black rounded-2xl uppercase text-[11px] tracking-widest active:scale-95 transition-all shadow-xl shadow-sky-500/10"
-        >
-          ВЫБРАТЬ API КЛЮЧ
-        </button>
-        {error && <p className="mt-4 text-red-500 text-[9px] uppercase font-bold">{error}</p>}
-      </div>
-    );
-  }
-
   return (
-    <div className="flex flex-col h-screen bg-[#030712] p-6 pt-12 overflow-hidden">
-      <div className="flex justify-between items-center mb-8">
+    <div className="flex flex-col h-screen bg-[#020617] text-white p-5 pt-10 overflow-hidden">
+      {/* Header */}
+      <div className="flex justify-between items-start mb-6">
         <div>
-          <h1 className="text-2xl font-black uppercase italic leading-none tracking-tighter">SigilCraft</h1>
-          <p className="text-[9px] font-bold text-sky-500 uppercase tracking-[0.3em] mt-1">Master Console</p>
+          <h1 className="text-2xl font-black uppercase italic tracking-tighter leading-none">SigilCraft</h1>
+          <p className="text-[10px] font-bold text-sky-400 uppercase tracking-[0.3em] mt-1">Version 1.2.0-Elite</p>
         </div>
-        <button onClick={() => setStatus('auth')} className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-[10px]">🔑</button>
+        <div className="flex gap-2">
+          <div className={`w-2 h-2 rounded-full ${process.env.API_KEY ? 'bg-green-500' : 'bg-red-500'} animate-pulse`}></div>
+        </div>
       </div>
 
-      <div className="flex-1 flex flex-col items-center justify-center relative">
-        <div className="w-full aspect-square max-w-[340px] bg-slate-900/40 rounded-[2.5rem] border border-white/5 overflow-hidden relative shadow-2xl">
+      {/* Artifact Viewport */}
+      <div className="flex-1 flex flex-col items-center justify-center min-h-0">
+        <div className="w-full aspect-square max-w-[320px] bg-slate-900/40 rounded-[2.5rem] border border-white/5 overflow-hidden shadow-2xl relative arcane-glow">
           {image ? (
-            <img src={image} className="w-full h-full object-cover" alt="Sigil" />
+            <img src={image} className="w-full h-full object-cover" alt="Artifact" />
           ) : (
-            <div className="w-full h-full flex items-center justify-center opacity-10">
-              <span className="text-8xl">✧</span>
+            <div className="w-full h-full flex flex-col items-center justify-center opacity-30 text-sky-400">
+              <span className="text-6xl mb-2">✧</span>
+              <p className="text-[9px] font-black uppercase tracking-[0.4em]">Empty Void</p>
             </div>
           )}
           
           {loading && (
             <div className="absolute inset-0 bg-black/80 backdrop-blur-md flex flex-col items-center justify-center z-20">
               <div className="w-10 h-10 border-2 border-sky-500/10 border-t-sky-500 rounded-full animate-spin mb-4"></div>
-              <p className="text-[9px] font-black uppercase text-sky-500 tracking-[0.4em] animate-pulse">Ритуал...</p>
+              <p className="text-[10px] font-black uppercase text-sky-500 tracking-[0.4em] animate-pulse">Ritual in progress</p>
             </div>
           )}
         </div>
 
         {error && (
-          <div className="mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded-xl w-full max-w-[340px]">
-            <p className="text-red-500 text-[9px] font-bold uppercase text-center">{error}</p>
+          <div className="mt-4 px-4 py-2 bg-red-500/10 border border-red-500/20 rounded-xl max-w-[320px]">
+            <p className="text-red-400 text-[9px] font-mono text-center break-all">{error}</p>
           </div>
         )}
       </div>
 
-      <div className="mt-auto pb-6">
-        <div className="flex gap-2 overflow-x-auto no-scrollbar py-4">
-          {ELEMENTS.map(el => (
+      {/* Terminal Logs (The Debug Solution) */}
+      <div className="h-24 mt-4 mb-4 bg-black/40 rounded-xl border border-white/5 p-3 font-mono text-[9px] overflow-y-auto no-scrollbar shadow-inner">
+        <div className="text-sky-800 mb-1 uppercase font-bold tracking-widest border-b border-white/5 pb-1">Master Console</div>
+        {logs.map((log, i) => (
+          <div key={i} className={`${log.includes('ERROR') ? 'text-red-400' : 'text-slate-500'} mb-0.5`}>
+            {log}
+          </div>
+        ))}
+        <div ref={logEndRef} />
+      </div>
+
+      {/* Controls */}
+      <div className="pb-4">
+        <div className="flex gap-2 overflow-x-auto no-scrollbar mb-4 pb-2">
+          {['Воздух', 'Вода', 'Огонь', 'Земля', 'Эфир', 'Плетение'].map(el => (
             <button 
               key={el}
-              onClick={() => setElement(el)}
-              className={`px-6 py-3 rounded-2xl text-[10px] font-black uppercase transition-all border ${
+              onClick={() => setElement(el as any)}
+              className={`px-5 py-3 rounded-2xl text-[9px] font-black uppercase transition-all border shrink-0 ${
                 element === el ? 'bg-sky-500 border-sky-500 text-black' : 'bg-white/5 border-white/10 text-slate-500'
               }`}
             >
@@ -185,22 +160,17 @@ const App = () => {
         <button 
           onClick={generateSigil}
           disabled={loading}
-          className="w-full py-6 bg-white text-black font-black rounded-3xl uppercase text-[11px] tracking-widest active:scale-95 transition-all disabled:opacity-30"
+          className="w-full py-5 bg-white text-black font-black rounded-3xl uppercase text-[11px] tracking-widest active:scale-95 transition-all disabled:opacity-30 shadow-xl"
         >
-          {loading ? 'Взывание к Эфиру...' : 'Призвать Артефакт'}
+          {loading ? 'Communing...' : 'Summon Artifact'}
         </button>
       </div>
     </div>
   );
 };
 
-// Безопасный рендеринг
-try {
-  const rootElement = document.getElementById('root');
-  if (rootElement) {
-    const root = ReactDOM.createRoot(rootElement);
-    root.render(<App />);
-  }
-} catch (e) {
-  console.error("Mount error:", e);
+const rootElement = document.getElementById('root');
+if (rootElement) {
+  const root = ReactDOM.createRoot(rootElement);
+  root.render(<App />);
 }
