@@ -1,6 +1,6 @@
 {
-  "name": "SigilCraft TMA",
-  "description": "High-performance Telegram Mini App for generating magical sigils and artifacts using Gemini 2.5 Flash Image.",
+  "name": "SigilCraft Collectibles",
+  "description": "A premium AI-powered studio for generating square collectible symbol cards with advanced control over style, aura, and elemental properties.",
   "requestFramePermissions": [
     "camera"
   ]
