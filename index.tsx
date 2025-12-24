@@ -1,306 +1,236 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import ReactDOM from 'react-dom/client';
 import { GoogleGenAI } from "@google/genai";
 
-// --- TYPES ---
+// --- Types & Constants ---
 enum SigilStyle {
-  CYBERPUNK = 'Cyberpunk',
-  MEDIEVAL = 'Medieval',
-  COSMIC = 'Cosmic',
-  ETHEREAL = 'Ethereal',
-  DARK_ALCHEMY = 'Dark Alchemy',
-  COMIC = 'Comic (Retro/Marvel)',
-  SOLARPUNK = 'Solarpunk',
-  VOID = 'Void',
-  NEON = 'Neon',
-  ANCIENT_SCROLL = 'Ancient Scroll'
+  MYSTIC = 'Ancient Mystic',
+  CYBER = 'Neo-Circuit',
+  VOID = 'Void Singularity',
+  AETHER = 'Ethereal Flow',
+  COMIC = 'Graphic Artifact'
 }
 
-enum MagicElement {
-  FIRE = 'Fire',
-  WATER = 'Water',
-  EARTH = 'Earth',
-  AIR = 'Air',
-  ETHER = 'Ether',
+enum Element {
+  FIRE = 'Pyrogen',
+  WATER = 'Hydro',
+  AIR = 'Aero',
+  EARTH = 'Geo',
   VOID = 'Void'
 }
 
-enum TabType {
-  BASE = 'Base',
-  STYLE = 'Style',
-  TUNING = 'Tuning'
-}
-
-interface SigilConfig {
-  symbol: string;
-  element: MagicElement;
-  style: SigilStyle;
-  color: string;
-  aiTextAllowed: boolean;
-  thickness: number;
-  glow: number;
-  position: number;
-}
-
-// --- CONSTANTS ---
-const STYLE_PROMPTS: Record<SigilStyle, string> = {
-  [SigilStyle.CYBERPUNK]: 'cyberpunk aesthetic, neon circuits, holographic projections, metallic textures',
-  [SigilStyle.MEDIEVAL]: 'gothic medieval, hand-drawn on parchment, ink and quill',
-  [SigilStyle.COSMIC]: 'nebula background, celestial geometry, glowing constellations',
-  [SigilStyle.ETHEREAL]: 'soft light, dreamlike, translucent layers, angelic presence',
-  [SigilStyle.DARK_ALCHEMY]: 'occult symbols, heavy shadows, obsidian, ritualistic atmosphere',
-  [SigilStyle.COMIC]: 'retro marvel comic book style, halftone patterns, bold outlines',
-  [SigilStyle.SOLARPUNK]: 'lush greenery, golden sunlight, white ceramic, sustainable tech',
-  [SigilStyle.VOID]: 'infinite darkness, glitch effects, distorted reality, purple and black',
-  [SigilStyle.NEON]: 'vibrant synthwave colors, glowing tubes, futuristic city lights',
-  [SigilStyle.ANCIENT_SCROLL]: 'weathered papyrus, Egyptian hieroglyphic influences'
+const STYLE_PROMPTS: Record<string, string> = {
+  [SigilStyle.MYSTIC]: 'ancient occult engravings, mystical gold ink, sacred geometry',
+  [SigilStyle.CYBER]: 'high-tech neon circuitry, holographic lines, futuristic digital construct',
+  [SigilStyle.VOID]: 'dark purple energy, anti-matter particles, obsidian shards',
+  [SigilStyle.AETHER]: 'angelic silver light, celestial flow, crystalline structures',
+  [SigilStyle.COMIC]: 'bold pop-art outlines, halftone shadows, vibrant comic book energy'
 };
 
-const ELEMENT_PROMPTS: Record<MagicElement, string> = {
-  [MagicElement.FIRE]: 'burning embers, intense heat, orange and red flames',
-  [MagicElement.WATER]: 'fluid motion, crystalline water, deep blue waves',
-  [MagicElement.EARTH]: 'rocky textures, brown and green moss, sturdy minerals',
-  [MagicElement.AIR]: 'swirling winds, clouds, translucent white trails',
-  [MagicElement.ETHER]: 'purple mist, divine light, shimmering energy',
-  [MagicElement.VOID]: 'black holes, dark matter, anti-light effects'
-};
-
-const DEFAULT_CONFIG: SigilConfig = {
-  symbol: 'Phoenix',
-  element: MagicElement.FIRE,
-  style: SigilStyle.CYBERPUNK,
-  color: '#38bdf8',
-  aiTextAllowed: false,
-  thickness: 50,
-  glow: 70,
-  position: 50
-};
-
-// --- SERVICES ---
 const twa = (window as any).Telegram?.WebApp;
 
-const triggerHaptic = (type: 'impact' | 'notification', style: string) => {
-  if (twa?.HapticFeedback) {
-    if (type === 'impact') twa.HapticFeedback.impactOccurred(style);
-    else twa.HapticFeedback.notificationOccurred(style);
-  }
-};
-
-const generateSigil = async (config: SigilConfig, refImage?: string): Promise<string> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  const prompt = `
-    Centralized magical sigil. Subject: ${config.symbol}. 
-    Element: ${ELEMENT_PROMPTS[config.element]}. 
-    Style: ${STYLE_PROMPTS[config.style]}. 
-    Color: ${config.color}. 
-    Glow: ${config.glow}%. Thickness: ${config.thickness}%.
-    ${config.aiTextAllowed ? "Include mystical readable glyphs." : "No readable text."}
-    1:1 square, black background, mystical artifact.
-  `;
-
-  const contents: any = { parts: [{ text: prompt }] };
-  if (refImage) {
-    contents.parts.push({
-      inlineData: {
-        data: refImage.split(',')[1],
-        mimeType: 'image/jpeg'
-      }
-    });
-  }
-
-  const response = await ai.models.generateContent({
-    model: 'gemini-2.5-flash-image',
-    contents,
-    config: { imageConfig: { aspectRatio: "1:1" } }
+const App = () => {
+  const [config, setConfig] = useState({
+    symbol: 'Dragon', element: Element.FIRE, style: SigilStyle.MYSTIC,
+    glow: 70, useText: false
   });
-
-  const part = response.candidates?.[0]?.content?.parts.find(p => p.inlineData);
-  if (!part) throw new Error("Portal connection unstable.");
-  return `data:image/png;base64,${part.inlineData.data}`;
-};
-
-// --- COMPONENTS ---
-const TabButton: React.FC<{ active: boolean; label: string; onClick: () => void }> = ({ active, label, onClick }) => (
-  <button
-    onClick={onClick}
-    className={`flex-1 py-4 text-[10px] font-black border-b-2 transition-all tracking-widest ${
-      active 
-        ? 'border-[var(--tg-theme-button-color)] text-[var(--tg-theme-button-color)]' 
-        : 'border-transparent text-[var(--tg-theme-hint-color)] opacity-40'
-    }`}
-  >
-    {label}
-  </button>
-);
-
-const App: React.FC = () => {
-  const [config, setConfig] = useState<SigilConfig>(DEFAULT_CONFIG);
-  const [activeTab, setActiveTab] = useState<TabType>(TabType.BASE);
+  const [tab, setTab] = useState('essence');
   const [image, setImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [refImage, setRefImage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (twa) {
       twa.expand();
       twa.ready();
+      twa.setHeaderColor('#05070a');
       twa.MainButton.setText("SYNTHESIZE ARTIFACT");
+      twa.MainButton.setParams({ color: '#0ea5e9', text_color: '#ffffff' });
       twa.MainButton.onClick(handleGenerate);
       twa.MainButton.show();
     }
-  }, [config, refImage, loading]);
+  }, [config, loading]);
 
   const handleGenerate = async () => {
     if (loading) return;
     setLoading(true);
     setError(null);
-    triggerHaptic('impact', 'medium');
-    if (twa) twa.MainButton.showProgress();
+    if (twa) {
+      twa.MainButton.showProgress();
+      twa.HapticFeedback.impactOccurred('heavy');
+    }
 
     try {
-      const result = await generateSigil(config, refImage || undefined);
-      setImage(result);
-      triggerHaptic('notification', 'success');
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const prompt = `
+        A professional magical sigil for a digital collectible.
+        Subject: ${config.symbol}. Element: ${config.element}. Style: ${STYLE_PROMPTS[config.style]}.
+        Vibe: 1:1, symmetrical, isolated on black background. 
+        Glow: ${config.glow}%. ${config.useText ? 'Include mystical runes.' : 'No text.'}
+        Ultra-sharp 4k, cinematic lighting.
+      `;
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash-image',
+        contents: { parts: [{ text: prompt }] },
+        config: { imageConfig: { aspectRatio: "1:1" } }
+      });
+
+      const part = response.candidates?.[0]?.content?.parts.find(p => p.inlineData);
+      if (!part) throw new Error("Aether connection lost.");
+      
+      setImage(`data:image/png;base64,${part.inlineData.data}`);
+      if (twa) twa.HapticFeedback.notificationOccurred('success');
     } catch (err: any) {
-      setError(err.message);
-      triggerHaptic('notification', 'error');
+      setError("TRANSMISSION ERROR");
+      if (twa) twa.HapticFeedback.notificationOccurred('error');
     } finally {
       setLoading(false);
       if (twa) twa.MainButton.hideProgress();
     }
   };
 
-  const updateConfig = (key: keyof SigilConfig, value: any) => {
-    setConfig(prev => ({ ...prev, [key]: value }));
-  };
-
-  const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = () => setRefImage(reader.result as string);
-      reader.readAsDataURL(file);
-    }
+  const update = (key: string, val: any) => {
+    if (twa) twa.HapticFeedback.impactOccurred('light');
+    setConfig(p => ({ ...p, [key]: val }));
   };
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      {/* Header */}
-      <div className="px-5 py-5 border-b border-white/5 flex justify-between items-center">
+      {/* Premium Header */}
+      <header className="px-6 py-5 shrink-0 flex items-center justify-between glass z-50">
         <div>
-          <h1 className="text-[12px] font-black tracking-tighter text-sky-400 uppercase">SigilCraft</h1>
-          <p className="text-[8px] opacity-30 font-mono uppercase tracking-widest">Aether-Core v2.5</p>
+          <h1 className="text-[10px] font-black tracking-[0.4em] uppercase text-sky-400 font-magic">SigilCraft Elite</h1>
+          <p className="text-[7px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">Aether-Core v3.2 // Online</p>
         </div>
-        <div className={`w-2 h-2 rounded-full ${loading ? 'bg-yellow-500 animate-pulse' : 'bg-green-500'}`} />
-      </div>
+        <div className="flex items-center gap-2">
+           <div className={`w-1.5 h-1.5 rounded-full ${loading ? 'bg-amber-400 animate-pulse' : 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]'}`} />
+        </div>
+      </header>
 
-      {/* Preview Area */}
-      <div className="relative w-full aspect-square bg-[#020617] flex items-center justify-center overflow-hidden">
-        {loading && (
-          <div className="absolute inset-0 z-10 bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center">
-            <div className="w-16 h-16 border-2 border-sky-500/20 border-t-sky-500 rounded-full animate-spin" />
-            <p className="mt-4 text-[9px] font-black tracking-[0.3em] text-sky-400 uppercase">Transmuting...</p>
+      {/* Altar Area */}
+      <main className="relative flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 flex items-center justify-center p-8 relative">
+          <div className={`relative w-full max-w-[280px] aspect-square rounded-[2.5rem] overflow-hidden glass sigil-portal transition-all duration-700 ${loading ? 'scale-95 opacity-50' : 'scale-100 opacity-100 shadow-2xl shadow-sky-500/10'}`}>
+            {loading && (
+              <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/40 backdrop-blur-sm">
+                <div className="w-10 h-10 border-2 border-sky-500/20 border-t-sky-400 rounded-full animate-spin" />
+                <p className="mt-4 text-[8px] font-black tracking-[0.4em] text-sky-400 uppercase">Binding...</p>
+              </div>
+            )}
+            
+            {image ? (
+              <img src={image} className="w-full h-full object-cover animate-in fade-in duration-1000" alt="Sigil" />
+            ) : (
+              <div className="w-full h-full flex flex-col items-center justify-center opacity-20">
+                <svg className="w-20 h-20" viewBox="0 0 100 100" fill="none" stroke="white" strokeWidth="0.5">
+                  <circle cx="50" cy="50" r="40" strokeDasharray="4 4" />
+                  <path d="M50 20 L80 75 L20 75 Z" />
+                </svg>
+                <p className="mt-4 text-[9px] uppercase font-magic tracking-widest">Awaiting Ritual</p>
+              </div>
+            )}
           </div>
-        )}
-
-        {image ? (
-          <img src={image} className="w-full h-full object-cover animate-in fade-in zoom-in-95 duration-500" />
-        ) : (
-          <div className="opacity-10 scale-75">
-            <svg width="120" height="120" viewBox="0 0 100 100" fill="none" stroke="white">
-              <circle cx="50" cy="50" r="45" strokeWidth="0.5" strokeDasharray="4 4" />
-              <path d="M50 5 L95 80 L5 80 Z" strokeWidth="0.5" />
-            </svg>
-          </div>
-        )}
-
-        {error && (
-          <div className="absolute inset-x-6 bottom-6 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl backdrop-blur-md">
-            <p className="text-[10px] text-red-400 font-bold text-center uppercase">{error}</p>
-          </div>
-        )}
-      </div>
-
-      {/* Tabs */}
-      <div className="flex bg-white/5">
-        <TabButton active={activeTab === TabType.BASE} label="BASE" onClick={() => setActiveTab(TabType.BASE)} />
-        <TabButton active={activeTab === TabType.STYLE} label="STYLE" onClick={() => setActiveTab(TabType.STYLE)} />
-        <TabButton active={activeTab === TabType.TUNING} label="TUNING" onClick={() => setActiveTab(TabType.TUNING)} />
-      </div>
-
-      {/* Controls */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-6 no-scrollbar pb-32">
-        {activeTab === TabType.BASE && (
-          <>
-            <div>
-              <label className="text-[9px] font-black text-white/30 uppercase tracking-widest mb-2 block">Sigil Subject</label>
-              <input 
-                type="text" 
-                value={config.symbol} 
-                onChange={e => updateConfig('symbol', e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-sm font-bold outline-none focus:border-sky-500 transition-colors"
-              />
+          
+          {error && (
+            <div className="absolute bottom-4 glass px-4 py-2 rounded-full border-red-500/20">
+              <p className="text-[8px] font-bold text-red-400 uppercase tracking-widest">{error}</p>
             </div>
-            <div>
-              <label className="text-[9px] font-black text-white/30 uppercase tracking-widest mb-2 block">Element</label>
-              <div className="grid grid-cols-3 gap-2">
-                {Object.values(MagicElement).map(el => (
+          )}
+        </div>
+
+        {/* Controls Panel */}
+        <div className="glass rounded-t-[3rem] p-6 pb-12 space-y-6 shadow-2xl">
+          <nav className="flex gap-2 p-1.5 bg-white/5 rounded-2xl">
+            {['essence', 'style', 'ritual'].map(t => (
+              <button
+                key={t}
+                onClick={() => setTab(t)}
+                className={`flex-1 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${tab === t ? 'bg-sky-500 text-black' : 'text-slate-500 hover:text-slate-300'}`}
+              >
+                {t}
+              </button>
+            ))}
+          </nav>
+
+          <div className="min-h-[140px] animate-in slide-in-from-bottom-2 duration-300">
+            {tab === 'essence' && (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest ml-2">Manifestation Object</label>
+                  <input 
+                    type="text" 
+                    value={config.symbol} 
+                    onChange={e => update('symbol', e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm font-bold outline-none focus:border-sky-500/40 transition-all"
+                    placeholder="Enter entity..."
+                  />
+                </div>
+                <div className="grid grid-cols-5 gap-2">
+                  {Object.values(Element).map(e => (
+                    <button 
+                      key={e} 
+                      onClick={() => update('element', e)}
+                      className={`h-10 flex items-center justify-center rounded-xl border text-[7px] font-black transition-all ${config.element === e ? 'bg-sky-500/10 border-sky-500/50 text-sky-400' : 'bg-white/5 border-transparent text-slate-500'}`}
+                    >
+                      {e.toUpperCase()}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {tab === 'style' && (
+              <div className="grid grid-cols-2 gap-2">
+                {Object.values(SigilStyle).map(s => (
                   <button 
-                    key={el}
-                    onClick={() => updateConfig('element', el)}
-                    className={`py-3 text-[9px] font-black rounded-lg border transition-all ${config.element === el ? 'bg-sky-500 border-sky-500 text-black' : 'bg-white/5 border-transparent text-white/40'}`}
+                    key={s} 
+                    onClick={() => update('style', s)}
+                    className={`p-4 rounded-2xl border text-left transition-all ${config.style === s ? 'bg-sky-500/10 border-sky-500/40' : 'bg-white/5 border-transparent opacity-40'}`}
                   >
-                    {el.toUpperCase()}
+                    <p className={`text-[9px] font-black uppercase tracking-tight ${config.style === s ? 'text-sky-400' : 'text-white'}`}>{s}</p>
+                    <p className="text-[7px] text-slate-500 mt-1 uppercase">Protocol</p>
                   </button>
                 ))}
               </div>
-            </div>
-          </>
-        )}
+            )}
 
-        {activeTab === TabType.STYLE && (
-          <div className="grid grid-cols-2 gap-2">
-            {Object.values(SigilStyle).map(s => (
-              <button 
-                key={s}
-                onClick={() => updateConfig('style', s)}
-                className={`p-3 text-[9px] font-black text-left rounded-lg border transition-all ${config.style === s ? 'bg-sky-500 border-sky-500 text-black' : 'bg-white/5 border-transparent text-white/40'}`}
-              >
-                {s.toUpperCase()}
-              </button>
-            ))}
+            {tab === 'ritual' && (
+              <div className="space-y-6">
+                <div className="space-y-3">
+                  <div className="flex justify-between px-2">
+                    <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Aura Potency</label>
+                    <span className="text-[10px] font-mono text-sky-400">{config.glow}%</span>
+                  </div>
+                  <input 
+                    type="range" 
+                    className="w-full h-1 bg-white/10 rounded-full appearance-none accent-sky-500"
+                    value={config.glow} 
+                    onChange={e => update('glow', +e.target.value)} 
+                  />
+                </div>
+                <div 
+                  onClick={() => update('useText', !config.useText)}
+                  className="flex items-center justify-between p-4 bg-white/5 rounded-2xl cursor-pointer border border-transparent active:border-sky-500/30 transition-all"
+                >
+                  <span className="text-[9px] font-black uppercase tracking-widest">Inscribe Glyphs</span>
+                  <div className={`w-8 h-4 rounded-full transition-colors relative ${config.useText ? 'bg-sky-500' : 'bg-white/20'}`}>
+                    <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${config.useText ? 'left-4.5' : 'left-0.5'}`} />
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
-        )}
+        </div>
+      </main>
 
-        {activeTab === TabType.TUNING && (
-          <div className="space-y-6">
-            <div>
-              <label className="flex justify-between text-[9px] font-black text-white/30 uppercase mb-4">
-                <span>Density</span>
-                <span className="text-sky-400">{config.thickness}%</span>
-              </label>
-              <input type="range" className="w-full accent-sky-500" value={config.thickness} onChange={e => updateConfig('thickness', +e.target.value)} />
-            </div>
-            <div>
-              <label className="flex justify-between text-[9px] font-black text-white/30 uppercase mb-4">
-                <span>Glow</span>
-                <span className="text-purple-400">{config.glow}%</span>
-              </label>
-              <input type="range" className="w-full accent-purple-500" value={config.glow} onChange={e => updateConfig('glow', +e.target.value)} />
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Only show Browser button if NOT in Telegram */}
-      {!(window as any).Telegram?.WebApp?.initData && (
-        <div className="fixed bottom-6 inset-x-6">
+      {/* Browser Fallback */}
+      {!twa?.initData && (
+        <div className="p-6 bg-[#05070a] border-t border-white/5">
           <button 
             onClick={handleGenerate} 
             disabled={loading}
-            className="w-full py-4 bg-white text-black text-[11px] font-black rounded-2xl uppercase tracking-[0.2em] active:scale-95 transition-transform"
+            className="w-full py-4 bg-sky-500 text-black rounded-2xl text-[10px] font-black uppercase tracking-[0.3em] active:scale-95 transition-all"
           >
             {loading ? 'Synthesizing...' : 'Synthesize Artifact'}
           </button>
