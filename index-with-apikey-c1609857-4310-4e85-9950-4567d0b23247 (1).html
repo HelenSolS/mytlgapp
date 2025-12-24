@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SigilCraft Elite</title>
+
+    <!-- Telegram Web App SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        body {
+            background-color: #050505;
+            color: #e5e5e5;
+            margin: 0;
+            overflow: hidden;
+        }
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 10px;
+        }
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+        .modal-content {
+            background: #1a1a1a;
+            padding: 32px;
+            border-radius: 24px;
+            max-width: 500px;
+            width: 90%;
+            border: 1px solid rgba(102, 126, 234, 0.3);
+        }
+        .modal input {
+            width: 100%;
+            padding: 16px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            color: white;
+            font-size: 14px;
+            margin-top: 16px;
+        }
+        .modal button {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            margin-top: 16px;
+            cursor: pointer;
+        }
+        .modal button:hover {
+            opacity: 0.9;
+        }
+    </style>
+
+    <!-- Import Maps -->
+    <script type="importmap">
+    {
+      "imports": {
+        "react": "https://esm.sh/react@19.0.0",
+        "react-dom/client": "https://esm.sh/react-dom@19.0.0/client"
+      }
+    }
+    </script>
+</head>
+<body>
+    <div id="root"></div>
+
+    <!-- ГЛОБАЛЬНЫЕ КОНСТАНТЫ -->
+    <script>
+        // Инициализация Telegram WebApp
+        const tg = window.Telegram?.WebApp;
+        if (tg) {
+            tg.ready();
+            tg.expand();
+            if (tg.themeParams?.bg_color) {
+                document.body.style.backgroundColor = tg.themeParams.bg_color;
+            }
+            console.log('✅ Telegram WebApp инициализирован');
+        }
+
+        // Константы приложения
+        window.AppMode = {
+            SIGIL: 'Сигилы',
+            ASSOCIATION: 'Ассоциации'
+        };
+
+        window.RenderingStyle = {
+            CARTOON: 'Карикатурный/Мультяшный',
+            COMIC: 'Комикс (Retro/Marvel)',
+            PENCIL: 'Карандашный рисунок',
+            INK: 'Черно-белая тушь',
+            SKETCH: 'Живой эскиз',
+            KAWAII: 'Милый (Kawaii)',
+            HYPERREALISM: 'Гиперреализм',
+            SCHEMATIC: 'Схематичный/Чертеж',
+            CONVEX_3D: 'Выпуклый 3D рельеф',
+            REALISM: 'Фотореализм'
+        };
+
+        window.MagicVibe = {
+            GLOWING: 'Магическое сияние',
+            MYSTERIOUS: 'Загадочный шепот',
+            ETHEREAL: 'Эфирная пыль'
+        };
+
+        window.SymbolPosition = {
+            CENTER: 'Центр',
+            TOP: 'Верх',
+            BOTTOM: 'Низ'
+        };
+
+        window.SIGIL_DATABASE = [
+            { id: 1, name: "The Whisper", nameRu: "Шёпот", element: 'Воздух', visualTz: "Thin curved line, gently splitting into two branches", baseColor: "#87CEEB" },
+            { id: 2, name: "Gate of Winds", nameRu: "Врата Ветров", element: 'Воздух', visualTz: "Two parallel vertical lines, between them a vortex shift", baseColor: "#87CEEB" },
+            { id: 12, name: "The Ripple", nameRu: "Рябь", element: 'Вода', visualTz: "Concentric circles, radiating from a point", baseColor: "#00CED1" },
+            { id: 23, name: "The Spark", nameRu: "Искра", element: 'Огонь', visualTz: "Small flash: short line + splitting", baseColor: "#FF8C00" },
+            { id: 34, name: "Rootmark", nameRu: "Корень", element: 'Земля', visualTz: "Y-shaped or root-like line", baseColor: "#808000" },
+            { id: 45, name: "Thread of Fate", nameRu: "Нить Судьбы", element: 'Эфир', visualTz: "One vertical line - straight, inevitable", baseColor: "#FFD700" },
+            { id: 66, name: "Catalyst", nameRu: "Катализатор", element: 'Плетение', visualTz: "Central point + diverging short rays", baseColor: "#FFD700" }
+        ];
+
+        // API ключ из localStorage
+        window.getApiKey = () => localStorage.getItem('gemini_api_key');
+        window.setApiKey = (key) => localStorage.setItem('gemini_api_key', key);
+
+        console.log('✅ Константы загружены');
+    </script>
+
+    <!-- ОСНОВНОЕ ПРИЛОЖЕНИЕ -->
+    <script type="module">
+        import React, { useState, useEffect } from 'react';
+        import ReactDOM from 'react-dom/client';
+
+        const { AppMode, RenderingStyle, MagicVibe, SymbolPosition, SIGIL_DATABASE } = window;
+
+        // ФУНКЦИЯ ГЕНЕРАЦИИ (прямой вызов Gemini API)
+        const generateCardImage = async (config, apiKey) => {
+            const getStyleDescription = (style) => {
+                const styles = {
+                    [RenderingStyle.CARTOON]: "Bold, stylized illustration with expressive shapes and dynamic line work.",
+                    [RenderingStyle.COMIC]: "Classic American comic book style, vibrant halftones (Ben-Day dots), thick ink outlines, and dynamic action-oriented shading.",
+                    [RenderingStyle.PENCIL]: "Detailed graphite pencil drawing with realistic cross-hatching and paper grain.",
+                    [RenderingStyle.INK]: "Sharp black ink wash, calligraphic precision, heavy contrast, master pen work.",
+                    [RenderingStyle.SKETCH]: "Loose charcoal or lead sketch with artistic construction lines and raw texture.",
+                    [RenderingStyle.KAWAII]: "Cute, simplified aesthetic with rounded proportions and clean outlines.",
+                    [RenderingStyle.HYPERREALISM]: "Extreme micro-detail, professional studio depth, cinematic lighting textures.",
+                    [RenderingStyle.SCHEMATIC]: "Technical drafting style, precise mathematical lines, architectural blueprint aesthetic.",
+                    [RenderingStyle.CONVEX_3D]: "3D embossed material relief with physical shadows and tactile volume.",
+                    [RenderingStyle.REALISM]: "Professional photographic aesthetic with accurate surface materials."
+                };
+                return styles[style] || "";
+            };
+
+            const colorInstruction = config.isMonochrome 
+                ? "STRICT MONOCHROME: High-contrast black and white." 
+                : "VIBRANT COLOR: Rich, saturated hues.";
+
+            const styleBase = getStyleDescription(config.renderingStyle);
+            const textDrawingInstruction = config.allowAiText 
+                ? "AI TEXT ALLOWED: Include artistic text elements naturally."
+                : "STRICTLY NO TEXT: Pure graphics only.";
+
+            let prompt = "";
+
+            if (config.mode === AppMode.SIGIL) {
+                const thicknessDesc = config.lineThickness < 1.5 
+                    ? "ultra-fine needle-thin strokes"
+                    : config.lineThickness < 3.0
+                    ? "refined lines with elegant weight"
+                    : "heavy, powerful and bold lines";
+
+                const glowDescription = config.glowIntensity < 15 
+                    ? "a ghostly subtle whisper of energy" 
+                    : config.glowIntensity < 50 
+                    ? "a radiant magical atmosphere" 
+                    : "an intense pulsating energy aura";
+
+                const vibeDetails = {
+                    [MagicVibe.GLOWING]: "Surrounded by crystalline light shards.",
+                    [MagicVibe.MYSTERIOUS]: "Wrapped in swirling dark smoke.",
+                    [MagicVibe.ETHEREAL]: "Dusted with shimmering cosmic particles."
+                };
+                const vibeDetail = vibeDetails[config.magicVibe] || "";
+
+                const frameStyle = config.showBorder 
+                    ? "A high-quality physical collector's card frame with intricate borders."
+                    : "No frame, cinematic edge-to-edge composition.";
+
+                const inscriptionInstruction = config.showInscription
+                    ? `At the bottom, the word "${config.symbolName.toUpperCase()}" is engraved.`
+                    : "No text inscription.";
+
+                const auraColorStr = config.isMonochrome ? "grayscale" : config.auraColor;
+                const positionDesc = `Symbol at ${config.position.toLowerCase()}, scale ${config.symbolSize}%.`;
+
+                prompt = `COLLECTIBLE ART CARD.
+SYMBOL: "${config.visualTz}".
+${positionDesc}
+COLOR: ${colorInstruction}
+STYLE: ${styleBase}
+TEXT: ${textDrawingInstruction}
+LINES: ${thicknessDesc}
+ENERGY: ${config.magicVibe}. ${vibeDetail}
+GLOW: ${glowDescription} (${auraColorStr})
+BACKGROUND: ${config.backgroundPreset}
+FRAME: ${frameStyle}
+${inscriptionInstruction}
+8k resolution, dramatic lighting.`;
+            } else {
+                prompt = `CONCEPTUAL ART.
+SUBJECT: "${config.conceptWord}"
+COLOR: ${colorInstruction}
+STYLE: ${styleBase}
+TEXT: ${textDrawingInstruction}
+Poetic, minimalist, powerful metaphor.`;
+            }
+
+            // Прямой вызов Gemini API
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [{ text: prompt }]
+                    }],
+                    generationConfig: {
+                        temperature: 0.9,
+                        topK: 40,
+                        topP: 0.95
+                    }
+                })
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error?.message || 'Ошибка API');
+            }
+
+            const data = await response.json();
+            const imagePart = data.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
+
+            if (imagePart?.inlineData) {
+                return { imageUrl: `data:image/png;base64,${imagePart.inlineData.data}` };
+            }
+
+            throw new Error("Изображение не сгенерировано");
+        };
+
+        // МОДАЛЬНОЕ ОКНО API КЛЮЧА
+        const ApiKeyModal = ({ onSubmit }) => {
+            const [key, setKey] = useState('');
+
+            return React.createElement('div', { className: "modal" },
+                React.createElement('div', { className: "modal-content" },
+                    React.createElement('h2', { style: { fontSize: '24px', fontWeight: 'bold', marginBottom: '16px' } }, '🔑 Gemini API Key'),
+                    React.createElement('p', { style: { fontSize: '14px', color: '#888', marginBottom: '8px' } }, 
+                        'Получи бесплатный ключ на:'
+                    ),
+                    React.createElement('a', { 
+                        href: 'https://aistudio.google.com/apikey', 
+                        target: '_blank',
+                        style: { color: '#667eea', fontSize: '14px', textDecoration: 'underline' }
+                    }, 'https://aistudio.google.com/apikey'),
+                    React.createElement('input', {
+                        type: 'text',
+                        placeholder: 'Вставь свой API ключ...',
+                        value: key,
+                        onChange: (e) => setKey(e.target.value)
+                    }),
+                    React.createElement('button', {
+                        onClick: () => {
+                            if (key.trim()) {
+                                window.setApiKey(key.trim());
+                                onSubmit();
+                            }
+                        }
+                    }, 'Сохранить')
+                )
+            );
+        };
+
+        // КОМПОНЕНТ ПАНЕЛИ УПРАВЛЕНИЯ
+        const ControlPanel = ({ config, onChange, onGenerate, isGenerating }) => {
+            const handleChange = (key, value) => {
+                onChange({ ...config, [key]: value });
+            };
+
+            const onSymbolSelect = (e) => {
+                const id = parseInt(e.target.value);
+                const template = SIGIL_DATABASE.find(s => s.id === id);
+                if (template) {
+                    onChange({
+                        ...config,
+                        selectedSymbolId: id,
+                        symbolNumber: `#${id.toString().padStart(3, '0')}`,
+                        symbolName: template.nameRu,
+                        element: template.element,
+                        visualTz: template.visualTz,
+                        auraColor: template.baseColor
+                    });
+                }
+            };
+
+            const labelClass = "text-[9px] font-black text-gray-500 uppercase tracking-widest mb-3";
+            const inputBg = "w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-[12px] text-white focus:outline-none focus:border-indigo-500/50 transition-all";
+
+            return React.createElement('div', { className: "h-full flex flex-col bg-[#0a0a0a]" },
+                React.createElement('div', { className: "flex items-center gap-4 p-8 border-b border-white/5" },
+                    React.createElement('div', { className: "w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/20" },
+                        React.createElement('i', { className: "fa-solid fa-wand-magic-sparkles text-white text-xl" })
+                    ),
+                    React.createElement('div', null,
+                        React.createElement('h1', { className: "text-xl font-black text-white uppercase italic leading-none mb-1" }, "Sigil Craft"),
+                        React.createElement('p', { className: "text-[9px] text-gray-600 font-bold uppercase tracking-widest" }, "Collector Studio PRO")
+                    )
+                ),
+
+                React.createElement('div', { className: "flex-1 overflow-y-auto p-8 space-y-8" },
+                    React.createElement('div', { className: "flex gap-2 p-1.5 bg-white/5 rounded-2xl border border-white/5" },
+                        React.createElement('button', {
+                            onClick: () => handleChange('mode', AppMode.SIGIL),
+                            className: `flex-1 py-2.5 text-[10px] font-black uppercase rounded-xl transition-all ${config.mode === AppMode.SIGIL ? 'bg-indigo-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}`
+                        }, "Сигилы"),
+                        React.createElement('button', {
+                            onClick: () => handleChange('mode', AppMode.ASSOCIATION),
+                            className: `flex-1 py-2.5 text-[10px] font-black uppercase rounded-xl transition-all ${config.mode === AppMode.ASSOCIATION ? 'bg-indigo-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}`
+                        }, "Ассоциации")
+                    ),
+
+                    config.mode === AppMode.SIGIL ? React.createElement('section', { className: "space-y-6" },
+                        React.createElement('div', null,
+                            React.createElement('div', { className: labelClass }, "Выбор базового знака"),
+                            React.createElement('select', {
+                                value: config.selectedSymbolId,
+                                onChange: onSymbolSelect,
+                                className: inputBg
+                            }, SIGIL_DATABASE.map(s => React.createElement('option', { key: s.id, value: s.id }, `#${s.id.toString().padStart(3, '0')} — ${s.nameRu}`)))
+                        ),
+
+                        React.createElement('div', null,
+                            React.createElement('div', { className: labelClass },
+                                React.createElement('span', null, "Толщина линий"),
+                                React.createElement('span', { className: "text-indigo-400 font-mono text-[8px]" }, config.lineThickness.toFixed(1) + "px")
+                            ),
+                            React.createElement('input', {
+                                type: "range",
+                                min: "1.0",
+                                max: "5.0",
+                                step: "0.1",
+                                value: config.lineThickness,
+                                onChange: (e) => handleChange('lineThickness', parseFloat(e.target.value)),
+                                className: "w-full accent-indigo-500 h-1 bg-white/10 rounded-full"
+                            })
+                        ),
+
+                        React.createElement('div', null,
+                            React.createElement('div', { className: labelClass },
+                                React.createElement('span', null, "Масштаб объекта"),
+                                React.createElement('span', { className: "text-indigo-400 font-mono text-[8px]" }, config.symbolSize + "%")
+                            ),
+                            React.createElement('input', {
+                                type: "range",
+                                min: "20",
+                                max: "90",
+                                value: config.symbolSize,
+                                onChange: (e) => handleChange('symbolSize', parseInt(e.target.value)),
+                                className: "w-full accent-indigo-500 h-1 bg-white/10 rounded-full"
+                            })
+                        )
+                    ) : React.createElement('section', { className: "space-y-6" },
+                        React.createElement('div', null,
+                            React.createElement('div', { className: labelClass }, "Концептуальный запрос"),
+                            React.createElement('textarea', {
+                                value: config.conceptWord,
+                                onChange: (e) => handleChange('conceptWord', e.target.value),
+                                placeholder: "Опишите идею для визуализации...",
+                                className: `${inputBg} min-h-[100px] resize-none`
+                            })
+                        )
+                    ),
+
+                    React.createElement('section', { className: "space-y-6 border-t border-white/5 pt-8" },
+                        React.createElement('div', null,
+                            React.createElement('div', { className: labelClass }, "Художественный стиль"),
+                            React.createElement('select', {
+                                value: config.renderingStyle,
+                                onChange: (e) => handleChange('renderingStyle', e.target.value),
+                                className: inputBg
+                            }, Object.values(RenderingStyle).map(v => React.createElement('option', { key: v, value: v }, v)))
+                        )
+                    )
+                ),
+
+                React.createElement('div', { className: "p-8 bg-[#0a0a0a] border-t border-white/5" },
+                    React.createElement('button', {
+                        onClick: onGenerate,
+                        disabled: isGenerating || (config.mode === AppMode.ASSOCIATION && !config.conceptWord.trim()),
+                        className: `w-full py-5 rounded-2xl font-black text-[12px] tracking-[0.3em] flex items-center justify-center gap-4 transition-all uppercase shadow-2xl ${isGenerating ? 'bg-neutral-800 text-gray-600' : 'bg-white text-black hover:scale-[1.02]'}`
+                    },
+                        isGenerating ? React.createElement('i', { className: "fa-solid fa-atom fa-spin text-indigo-500" }) : React.createElement('i', { className: "fa-solid fa-bolt" }),
+                        React.createElement('span', null, isGenerating ? 'Синтезирую...' : 'Синтезировать')
+                    )
+                )
+            );
+        };
+
+        // ГЛАВНЫЙ КОМПОНЕНТ
+        const FIRST_SYMBOL = SIGIL_DATABASE[0];
+        const INITIAL_CONFIG = {
+            mode: AppMode.SIGIL,
+            isMonochrome: false,
+            renderingStyle: RenderingStyle.CONVEX_3D,
+            magicVibe: MagicVibe.GLOWING,
+            backgroundPreset: 'Темный минимализм',
+            showBorder: true,
+            showInscription: false,
+            allowAiText: false,
+            selectedSymbolId: FIRST_SYMBOL.id,
+            symbolNumber: '#001',
+            symbolName: FIRST_SYMBOL.nameRu,
+            element: FIRST_SYMBOL.element,
+            visualTz: FIRST_SYMBOL.visualTz,
+            auraColor: FIRST_SYMBOL.baseColor,
+            lineThickness: 2.0,
+            glowIntensity: 20,
+            symbolSize: 55,
+            position: SymbolPosition.CENTER,
+            conceptWord: ''
+        };
+
+        const App = () => {
+            const [config, setConfig] = useState(INITIAL_CONFIG);
+            const [result, setResult] = useState(null);
+            const [isGenerating, setIsGenerating] = useState(false);
+            const [error, setError] = useState(null);
+            const [showApiKeyModal, setShowApiKeyModal] = useState(!window.getApiKey());
+
+            const handleGenerate = async () => {
+                const apiKey = window.getApiKey();
+                if (!apiKey) {
+                    setShowApiKeyModal(true);
+                    return;
+                }
+
+                setIsGenerating(true);
+                setError(null);
+                try {
+                    const res = await generateCardImage(config, apiKey);
+                    setResult(res);
+                    if (tg?.HapticFeedback) {
+                        tg.HapticFeedback.notificationOccurred('success');
+                    }
+                } catch (err) {
+                    setError(err.message || "Ошибка генерации");
+                    if (tg?.HapticFeedback) {
+                        tg.HapticFeedback.notificationOccurred('error');
+                    }
+                } finally {
+                    setIsGenerating(false);
+                }
+            };
+
+            return React.createElement('div', null,
+                showApiKeyModal && React.createElement(ApiKeyModal, {
+                    onSubmit: () => setShowApiKeyModal(false)
+                }),
+
+                React.createElement('div', { className: "flex flex-col md:flex-row h-screen w-full bg-[#050505] overflow-hidden font-sans text-white" },
+                    React.createElement('aside', { className: "w-full md:w-[400px] h-[50vh] md:h-full flex-shrink-0 z-20 shadow-2xl relative border-b md:border-b-0 md:border-r border-white/5 bg-[#0a0a0a] overflow-hidden" },
+                        React.createElement(ControlPanel, {
+                            config: config,
+                            onChange: setConfig,
+                            onGenerate: handleGenerate,
+                            isGenerating: isGenerating
+                        })
+                    ),
+
+                    React.createElement('main', { className: "flex-1 relative flex flex-col items-center justify-center p-6 md:p-12 overflow-hidden" },
+                        React.createElement('div', { className: "relative z-10 w-full max-w-[320px] sm:max-w-[500px] md:max-w-[700px] aspect-square rounded-[2rem] md:rounded-[3.5rem] overflow-hidden bg-black shadow-[0_0_80px_rgba(0,0,0,1)] border border-white/[0.08]" },
+                            isGenerating ? React.createElement('div', { className: "absolute inset-0 flex flex-col items-center justify-center bg-black/95 z-30" },
+                                React.createElement('div', { className: "relative w-24 h-24 md:w-40 md:h-40 mb-4 md:mb-8" },
+                                    React.createElement('svg', { className: "w-full h-full animate-spin", viewBox: "0 0 100 100" },
+                                        React.createElement('circle', { cx: "50", cy: "50", r: "45", fill: "none", stroke: "currentColor", strokeWidth: "3", className: "text-indigo-500", strokeDasharray: "60 180", strokeLinecap: "round" })
+                                    )
+                                ),
+                                React.createElement('div', { className: "text-[10px] md:text-[14px] text-indigo-400 font-black tracking-[0.4em] uppercase animate-pulse" }, "Синтез...")
+                            ) : result ? React.createElement('img', { src: result.imageUrl, alt: "Artifact", className: "w-full h-full object-cover p-0.5" }) : React.createElement('div', { className: "absolute inset-0 flex flex-col items-center justify-center text-center p-6 md:p-12 opacity-20" },
+                                React.createElement('i', { className: "fa-solid fa-fingerprint text-gray-700 text-5xl md:text-7xl mb-4 md:mb-8" }),
+                                React.createElement('h3', { className: "text-lg md:text-2xl font-black text-white/50 mb-2 uppercase italic tracking-widest" }, "Готов к работе")
+                            ),
+
+                            error && React.createElement('div', { className: "absolute inset-0 bg-red-950/20 backdrop-blur-xl flex items-center justify-center z-50 p-6 md:p-12" },
+                                React.createElement('div', { className: "bg-black/90 border border-red-500/30 p-6 md:p-10 rounded-[2rem] md:rounded-[3rem] text-center max-w-sm shadow-2xl" },
+                                    React.createElement('i', { className: "fa-solid fa-triangle-exclamation text-red-500 text-2xl md:text-3xl mb-4" }),
+                                    React.createElement('p', { className: "text-white text-xs md:text-sm font-medium mb-6" }, error),
+                                    React.createElement('button', {
+                                        onClick: () => setError(null),
+                                        className: "px-6 md:px-8 py-2 md:py-3 bg-white text-black text-[8px] md:text-[10px] font-black uppercase rounded-full tracking-widest"
+                                    }, "Сброс")
+                                )
+                            )
+                        )
+                    )
+                )
+            );
+        };
+
+        // Запускаем приложение
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(React.createElement(App));
+
+        console.log('✅ Приложение запущено!');
+    </script>
+</body>
+</html>
