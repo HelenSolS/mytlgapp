@@ -13,8 +13,11 @@
       body { background-color: #030712; color: white; font-family: 'Inter', sans-serif; margin: 0; padding: 0; overflow: hidden; }
       #root { height: 100vh; display: flex; flex-direction: column; }
       .loading-pulse { animation: pulse 2s infinite; }
-      @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
-      .no-scrollbar::-webkit-scrollbar { display: none; }
+      @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+      #error-overlay { 
+        display: none; position: fixed; inset: 0; background: #000; color: #ff4444; 
+        padding: 20px; z-index: 9999; font-family: monospace; font-size: 12px; overflow: auto;
+      }
     </style>
 
     <script type="importmap">
@@ -31,12 +34,38 @@
 </script>
   </head>
   <body>
+    <!-- Окно для вывода критических ошибок -->
+    <div id="error-overlay">
+      <h2 style="color:white; margin-bottom:10px;">Критическая ошибка запуска:</h2>
+      <div id="error-content"></div>
+      <button onclick="location.reload()" style="margin-top:20px; background:#fff; color:#000; padding:10px; border:none; font-weight:bold;">Перезагрузить</button>
+    </div>
+
     <div id="root">
       <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; background:#030712; color:#38bdf8;">
         <div style="font-size:32px; margin-bottom:15px;" class="loading-pulse">✨</div>
-        <div style="font-size:10px; font-weight:900; text-transform:uppercase; letter-spacing:0.4em;">Инициализация...</div>
+        <div style="font-size:10px; font-weight:900; text-transform:uppercase; letter-spacing:0.4em;">Пробуждение системы...</div>
       </div>
     </div>
-    <script type="text/babel" data-presets="react,typescript" data-type="module" src="index.tsx"></script>
+
+    <script>
+      // Глобальный перехватчик ошибок для отладки в Telegram
+      window.onerror = function(msg, url, line, col, error) {
+        document.getElementById('error-overlay').style.display = 'block';
+        document.getElementById('error-content').innerText = 
+          msg + '\n\nФайл: ' + url + '\nСтрока: ' + line + ':' + col + 
+          (error ? '\n\nStack: ' + error.stack : '');
+        return false;
+      };
+      window.addEventListener('unhandledrejection', function(event) {
+        document.getElementById('error-overlay').style.display = 'block';
+        document.getElementById('error-content').innerText = 'Ошибка в Promise: ' + event.reason;
+      });
+    </script>
+
+    <script type="text/babel" data-presets="react,typescript" data-type="module">
+      // Мы вставляем код прямо сюда или импортируем, но Babel должен его видеть
+      import './index.tsx';
+    </script>
   </body>
 </html>
