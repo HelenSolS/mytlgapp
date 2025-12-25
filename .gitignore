@@ -1,0 +1,8 @@
+# API ключи (не коммитить!)
+api-key.txt
+config.js
+
+# Другие секреты
+*.key
+*.secret
+.env
