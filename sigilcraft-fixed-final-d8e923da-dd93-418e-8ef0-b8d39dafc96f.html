@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>SigilCraft Mobile</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #050505; color: #e5e5e5; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; touch-action: manipulation; }
+    ::-webkit-scrollbar { width: 3px; }
+    ::-webkit-scrollbar-thumb { background: #444; border-radius: 10px; }
+    .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.95); display: flex; align-items: center; justify-content: center; z-index: 9999; padding: 20px; }
+    .modal-content { background: #1a1a1a; padding: 24px; border-radius: 20px; max-width: 400px; width: 100%; border: 1px solid rgba(102, 126, 234, 0.3); }
+    .modal h2 { font-size: 20px; font-weight: bold; margin-bottom: 12px; }
+    .modal p { font-size: 13px; color: #888; margin-bottom: 8px; }
+    .modal a { color: #667eea; font-size: 13px; text-decoration: underline; }
+    .modal input { width: 100%; padding: 12px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 10px; color: white; font-size: 13px; margin-top: 12px; }
+    .modal button { width: 100%; padding: 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 10px; font-weight: 600; margin-top: 12px; cursor: pointer; }
+    .screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; transition: transform 0.3s ease, opacity 0.3s ease; }
+    .screen.hidden { transform: translateX(100%); opacity: 0; pointer-events: none; }
+    .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 16px; border-radius: 16px; font-weight: bold; font-size: 16px; text-align: center; cursor: pointer; border: none; width: 100%; box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4); }
+    .btn-secondary { background: rgba(255, 255, 255, 0.1); color: white; padding: 14px; border-radius: 14px; font-weight: 600; font-size: 14px; text-align: center; cursor: pointer; border: 1px solid rgba(255, 255, 255, 0.2); }
+    .card-label { position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(to top, rgba(0, 0, 0, 0.9), transparent); padding: 16px 12px 12px; text-align: center; }
+    .card-label-text { font-size: 10px; color: rgba(255, 255, 255, 0.8); text-transform: uppercase; letter-spacing: 1.5px; line-height: 1.4; }
+  </style>
+  <script type="importmap">{"imports":{"react":"https://esm.sh/react@19.0.0","react-dom/client":"https://esm.sh/react-dom@19.0.0/client"}}</script>
+</head>
+<body>
+  <div id="root"></div>
+  <script>
+    const tg = window.Telegram?.WebApp;
+    if (tg) { tg.ready(); tg.expand(); if (tg.themeParams?.bg_color) document.body.style.backgroundColor = tg.themeParams.bg_color; }
+    window.AppMode = { SIGIL: 'Сигилы', ASSOCIATION: 'Ассоциации' };
+    window.RenderingStyle = { CARTOON: 'Карикатурный', COMIC: 'Комикс', PENCIL: 'Карандаш', INK: 'Тушь', SKETCH: 'Эскиз', KAWAII: 'Kawaii', HYPERREALISM: 'Гиперреализм', SCHEMATIC: 'Чертеж', CONVEX_3D: '3D рельеф', REALISM: 'Фотореализм' };
+    window.MagicVibe = { GLOWING: 'Магическое сияние', MYSTERIOUS: 'Загадочный шепот', ETHEREAL: 'Эфирная пыль' };
+    window.BackgroundPreset = { DARK_MINIMAL: 'Темный минимализм', LIGHT_MINIMAL: 'Светлый минимализм', COSMIC_NEBULA: 'Космическая туманность', HOLOGRAPHIC_GRADIENT: 'Голографический градиент', ETHEREAL_MIST: 'Эфирный туман', OBSIDIAN_CHAMBER: 'Обсидиановая камера' };
+    window.SIGIL_DATABASE = [{"id": 1, "name": "The Whisper", "nameRu": "Шёпот", "element": "Air", "visualTz": "Изогнутая тонкая линия, мягко расходящаяся на две ветви", "baseColor": "#87CEEB"}, {"id": 2, "name": "Gate of Winds", "nameRu": "Врата Ветров", "element": "Air", "visualTz": "Две параллельные вертикальные линии, между ними вихревое смещение", "baseColor": "#87CEEB"}, {"id": 3, "name": "The Signal", "nameRu": "Сигнал", "element": "Air", "visualTz": "Круг + 3 расходящиеся луча, как маяк", "baseColor": "#87CEEB"}, {"id": 4, "name": "Feather of Direction", "nameRu": "Перо", "element": "Air", "visualTz": "Стилизованное перо, тонкая линия", "baseColor": "#87CEEB"}, {"id": 5, "name": "Twin Winds", "nameRu": "Двойные Ветры", "element": "Air", "visualTz": "Два симметричных вихря", "baseColor": "#87CEEB"}, {"id": 6, "name": "The Messenger", "nameRu": "Посланник", "element": "Air", "visualTz": "Стрела света, пересекающая круг", "baseColor": "#87CEEB"}, {"id": 7, "name": "The Echo", "nameRu": "Эхо", "element": "Air", "visualTz": "Три повторяющиеся дуги", "baseColor": "#87CEEB"}, {"id": 8, "name": "The Veil", "nameRu": "Покров", "element": "Air", "visualTz": "Мягкая полупрозрачная форма", "baseColor": "#87CEEB"}, {"id": 9, "name": "Turning Breath", "nameRu": "Разворот Ветра", "element": "Air", "visualTz": "Спираль, резко меняющая направление", "baseColor": "#87CEEB"}, {"id": 10, "name": "The Calling", "nameRu": "Зов", "element": "Air", "visualTz": "Вертикальный луч, расширяющийся сверху", "baseColor": "#87CEEB"}, {"id": 11, "name": "The Watcher", "nameRu": "Наблюдатель", "element": "Air", "visualTz": "Глаз без зрачка, контур + дуга света", "baseColor": "#87CEEB"}, {"id": 12, "name": "The Ripple", "nameRu": "Рябь", "element": "Water", "visualTz": "Концентрические круги от точки", "baseColor": "#00CED1"}, {"id": 13, "name": "Deep Tide", "nameRu": "Глубокий Прилив", "element": "Water", "visualTz": "Две мягкие волны", "baseColor": "#00CED1"}, {"id": 14, "name": "Mirror Water", "nameRu": "Водное Зеркало", "element": "Water", "visualTz": "Горизонтальная линия + отражение", "baseColor": "#00CED1"}, {"id": 15, "name": "Heartstream", "nameRu": "Поток Сердца", "element": "Water", "visualTz": "Вертикальная линия, текущая вниз", "baseColor": "#00CED1"}, {"id": 16, "name": "The Bond", "nameRu": "Узел", "element": "Water", "visualTz": "Две линии, переплетающиеся узлом", "baseColor": "#00CED1"}, {"id": 17, "name": "The Drift", "nameRu": "Снос Течения", "element": "Water", "visualTz": "Стрела, отклонённая течением", "baseColor": "#00CED1"}, {"id": 18, "name": "The Vessel", "nameRu": "Чаша", "element": "Water", "visualTz": "Полукруг снизу", "baseColor": "#00CED1"}, {"id": 19, "name": "Undercurrent", "nameRu": "Подводное Течение", "element": "Water", "visualTz": "Волна под линией", "baseColor": "#00CED1"}, {"id": 20, "name": "Tearline", "nameRu": "Линия Слёзы", "element": "Water", "visualTz": "Вытянутая вниз капля", "baseColor": "#00CED1"}, {"id": 21, "name": "Resonance", "nameRu": "Резонанс", "element": "Water", "visualTz": "Две параллельные волны", "baseColor": "#00CED1"}, {"id": 22, "name": "Memory Pool", "nameRu": "Озеро Памяти", "element": "Water", "visualTz": "Овал с отражением", "baseColor": "#00CED1"}, {"id": 23, "name": "The Spark", "nameRu": "Искра", "element": "Fire", "visualTz": "Вспышка: линия + расщепление", "baseColor": "#FF8C00"}, {"id": 24, "name": "The Strike", "nameRu": "Удар", "element": "Fire", "visualTz": "Две линии сталкиваются", "baseColor": "#FF8C00"}, {"id": 25, "name": "Ember Road", "nameRu": "Дорога Углей", "element": "Fire", "visualTz": "Линия + точечные угли", "baseColor": "#FF8C00"}, {"id": 26, "name": "Phoenix Sign", "nameRu": "Феникс", "element": "Fire", "visualTz": "Линия вверх дугой, огненное перо", "baseColor": "#FF8C00"}, {"id": 27, "name": "The Clash", "nameRu": "Столкновение", "element": "Fire", "visualTz": "X-подобная динамика", "baseColor": "#FF8C00"}, {"id": 28, "name": "The Flare", "nameRu": "Вспышка", "element": "Fire", "visualTz": "Луч, резко расширяющийся", "baseColor": "#FF8C00"}, {"id": 29, "name": "The Torch", "nameRu": "Факел", "element": "Fire", "visualTz": "Вертикальная линия, огненная корона", "baseColor": "#FF8C00"}, {"id": 30, "name": "The Break", "nameRu": "Прорыв", "element": "Fire", "visualTz": "Разрыв линии с выходом", "baseColor": "#FF8C00"}, {"id": 31, "name": "Stormfront", "nameRu": "Передовая Бури", "element": "Fire", "visualTz": "Волнистая линия во всплеск", "baseColor": "#FF8C00"}, {"id": 32, "name": "Burning Choice", "nameRu": "Обжигающий Выбор", "element": "Fire", "visualTz": "Две линии + точка выбора", "baseColor": "#FF8C00"}, {"id": 33, "name": "Inferno Path", "nameRu": "Путь Пламени", "element": "Fire", "visualTz": "Вертикальный столб сегментами", "baseColor": "#FF8C00"}, {"id": 34, "name": "Rootmark", "nameRu": "Корень", "element": "Earth", "visualTz": "Y-образная корневая линия", "baseColor": "#808000"}, {"id": 35, "name": "Stone Gate", "nameRu": "Каменные Врата", "element": "Earth", "visualTz": "Две тяжёлые формы-врата", "baseColor": "#808000"}, {"id": 36, "name": "Harvest Line", "nameRu": "Линия Урожая", "element": "Earth", "visualTz": "Горизонтальная линия со штрихами", "baseColor": "#808000"}, {"id": 37, "name": "The Shelter", "nameRu": "Убежище", "element": "Earth", "visualTz": "Полукруг-накрытие", "baseColor": "#808000"}, {"id": 38, "name": "The Architect", "nameRu": "Архитектор", "element": "Earth", "visualTz": "Геометричная конструкция", "baseColor": "#808000"}, {"id": 39, "name": "The Anchor", "nameRu": "Якорь", "element": "Earth", "visualTz": "Вертикальная линия + расширение", "baseColor": "#808000"}, {"id": 40, "name": "Summit Stone", "nameRu": "Камень Вершины", "element": "Earth", "visualTz": "Пирамида/треугольник", "baseColor": "#808000"}, {"id": 41, "name": "The Burden", "nameRu": "Ноша", "element": "Earth", "visualTz": "Линия + тяжёлая форма сверху", "baseColor": "#808000"}, {"id": 42, "name": "Golden Vein", "nameRu": "Золотая Жила", "element": "Earth", "visualTz": "Диагональная трещина", "baseColor": "#808000"}, {"id": 43, "name": "The Pact", "nameRu": "Пакт", "element": "Earth", "visualTz": "Две параллельные линии соединены", "baseColor": "#808000"}, {"id": 44, "name": "Foundation Shift", "nameRu": "Сдвиг Фундамента", "element": "Earth", "visualTz": "Горизонтальная линия, излом", "baseColor": "#808000"}, {"id": 45, "name": "Thread of Fate", "nameRu": "Нить Судьбы", "element": "Aether", "visualTz": "Вертикальная линия ровная", "baseColor": "#FFD700"}, {"id": 46, "name": "Convergence", "nameRu": "Схождение", "element": "Aether", "visualTz": "Две линии в точку", "baseColor": "#FFD700"}, {"id": 47, "name": "Chrono Gate", "nameRu": "Врата Времени", "element": "Aether", "visualTz": "Круг + вертикальная ось", "baseColor": "#FFD700"}, {"id": 48, "name": "Ancestral Echo", "nameRu": "Эхо Предков", "element": "Aether", "visualTz": "Волнистая линия + эхо", "baseColor": "#FFD700"}, {"id": 49, "name": "Destiny Mark", "nameRu": "Знак Предназначения", "element": "Aether", "visualTz": "Стрела вверх тонкая", "baseColor": "#FFD700"}, {"id": 50, "name": "Veilbreaker", "nameRu": "Разрывающая Покров", "element": "Aether", "visualTz": "Разлом линии + световой выход", "baseColor": "#FFD700"}, {"id": 51, "name": "Great Crossing", "nameRu": "Великое Пересечение", "element": "Aether", "visualTz": "Перекрёсток двух линий", "baseColor": "#FFD700"}, {"id": 52, "name": "Origin Flame", "nameRu": "Изначённое Пламя", "element": "Aether", "visualTz": "Вертикальный огненный язык", "baseColor": "#FFD700"}, {"id": 53, "name": "The Keeper", "nameRu": "Хранитель", "element": "Aether", "visualTz": "Округлый щит", "baseColor": "#FFD700"}, {"id": 54, "name": "Final Sign", "nameRu": "Последний Знак", "element": "Aether", "visualTz": "Круг + точка выхода сверху", "baseColor": "#FFD700"}, {"id": 55, "name": "First Light", "nameRu": "Первый Свет", "element": "Aether", "visualTz": "Точка + расходящиеся лучи", "baseColor": "#FFD700"}, {"id": 56, "name": "Mirror Key", "nameRu": "Ключ Зеркала", "element": "Weaving", "visualTz": "Две симметричные вертикальные линии", "baseColor": "#C0C0C0"}, {"id": 57, "name": "Shadow Key", "nameRu": "Ключ Тени", "element": "Weaving", "visualTz": "Перевёрнутая дуга", "baseColor": "#696969"}, {"id": 58, "name": "Light Key", "nameRu": "Ключ Света", "element": "Weaving", "visualTz": "Крестик света", "baseColor": "#FFFFFF"}, {"id": 59, "name": "Amplifier", "nameRu": "Усилитель", "element": "Weaving", "visualTz": "Две расходящиеся линии", "baseColor": "#FFD700"}, {"id": 60, "name": "Divider", "nameRu": "Разделитель", "element": "Weaving", "visualTz": "Вертикальная линия делящая", "baseColor": "#C0C0C0"}, {"id": 61, "name": "Delay Mark", "nameRu": "Задержка", "element": "Weaving", "visualTz": "Линия + стоп-точка", "baseColor": "#4682B4"}, {"id": 62, "name": "Acceleration Mark", "nameRu": "Ускорение", "element": "Weaving", "visualTz": "Линия сужающаяся", "baseColor": "#FFD700"}, {"id": 63, "name": "Inversion", "nameRu": "Инверсия", "element": "Weaving", "visualTz": "Изогнутая зеркальная форма", "baseColor": "#C0C0C0"}, {"id": 64, "name": "Echo Seal", "nameRu": "Печать Эха", "element": "Weaving", "visualTz": "Две смещённые линии", "baseColor": "#C0C0C0"}, {"id": 65, "name": "Bridge", "nameRu": "Мост", "element": "Weaving", "visualTz": "Две точки соединены дугой", "baseColor": "#C0C0C0"}, {"id": 66, "name": "Catalyst", "nameRu": "Катализатор", "element": "Weaving", "visualTz": "Точка + расходящиеся лучи", "baseColor": "#FFD700"}];
+    window.TEAM_API_KEY = null;
+    async function loadTeamApiKey() {
+      try {
+        const response = await fetch('api-key.txt');
+        if (response.ok) {
+          const key = await response.text();
+          const trimmedKey = key.trim();
+          if (trimmedKey && trimmedKey !== 'AIzaSyYOUR_API_KEY_HERE') {
+            window.TEAM_API_KEY = trimmedKey;
+            console.log('Командный ключ загружен');
+            return true;
+          }
+        }
+      } catch (e) { console.log('api-key.txt не найден'); }
+      try {
+        const script = document.createElement('script');
+        script.src = 'config.js';
+        await new Promise((resolve, reject) => { script.onload = resolve; script.onerror = reject; document.head.appendChild(script); });
+        if (window.TEAM_API_KEY && window.TEAM_API_KEY !== 'AIzaSyYOUR_API_KEY_HERE') {
+          console.log('Командный ключ загружен из config.js');
+          return true;
+        }
+      } catch (e) { console.log('config.js не найден'); }
+      return false;
+    }
+    window.getApiKey = () => { if (window.TEAM_API_KEY) return window.TEAM_API_KEY; return localStorage.getItem('gemini_api_key'); };
+    window.setApiKey = (key) => { localStorage.setItem('gemini_api_key', key); };
+    loadTeamApiKey();
+  </script>
+  <script type="module">
+    import React, { useState } from 'react';
+    import ReactDOM from 'react-dom/client';
+    const { AppMode, RenderingStyle, MagicVibe, BackgroundPreset, SIGIL_DATABASE } = window;
+    const gen = async (c, k) => {
+      let p = "";
+      if (c.mode === AppMode.SIGIL) {
+        const t = c.lineThickness < 2 ? "thin" : c.lineThickness < 3.5 ? "medium" : "bold";
+        const g = c.glowIntensity < 30 ? "subtle" : c.glowIntensity < 60 ? "moderate" : "intense";
+        const v = { [MagicVibe.GLOWING]: "Crystalline light.", [MagicVibe.MYSTERIOUS]: "Dark smoke.", [MagicVibe.ETHEREAL]: "Cosmic particles." }[c.magicVibe] || "";
+        const f = c.showBorder ? "Ornate frame." : "No frame.";
+        const i = c.showInscription ? "Text: " + c.symbolName.toUpperCase() : "No text.";
+        const m = c.colorMode === 'bw' ? "MONOCHROME" : c.colorMode === 'energy' ? "Energy glow " + c.auraColor : "VIBRANT COLOR";
+        p = "Card 1:1. Symbol: " + c.visualTz + ". Lines: " + t + ". Energy: " + g + ". " + v + " Aura: " + c.auraColor + ". Background: " + c.backgroundPreset + ". " + f + " " + i + " Color: " + m + ". 8k.";
+      } else {
+        p = "Art: " + c.conceptWord + ". 1:1. Minimalist. " + (c.colorMode === 'bw' ? "Monochrome" : "Color") + ".";
+      }
+      const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=" + k, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: p }] }], generationConfig: { temperature: 0.9, topK: 40, topP: 0.95 } })
+      });
+      if (!r.ok) { const e = await r.json(); throw new Error(e.error?.message || 'Ошибка'); }
+      const d = await r.json();
+      const img = d.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
+      if (img?.inlineData) return { imageUrl: "data:image/png;base64," + img.inlineData.data };
+      throw new Error("Нет изображения");
+    };
+    const M = ({ onSubmit }) => {
+      const [k, setK] = useState('');
+      return React.createElement('div', { className: "modal" },
+        React.createElement('div', { className: "modal-content" },
+          React.createElement('h2', null, '🔑 API Key'),
+          React.createElement('p', null, 'Получи бесплатный ключ:'),
+          React.createElement('a', { href: 'https://aistudio.google.com/apikey', target: '_blank' }, 'aistudio.google.com/apikey'),
+          React.createElement('input', { type: 'text', placeholder: 'Вставь ключ...', value: k, onChange: e => setK(e.target.value) }),
+          React.createElement('button', { onClick: () => { if (k.trim()) { window.setApiKey(k.trim()); onSubmit(); } } }, 'Сохранить')
+        )
+      );
+    };
+    const Settings = ({ config: c, onChange: o, onGenerate: g }) => {
+      const h = (k, v) => o({ ...c, [k]: v });
+      const s = e => {
+        const id = parseInt(e.target.value);
+        const t = SIGIL_DATABASE.find(s => s.id === id);
+        if (t) o({ ...c, selectedSymbolId: id, symbolName: t.nameRu, element: t.element, visualTz: t.visualTz, auraColor: t.baseColor });
+      };
+      const l = "text-[9px] font-bold text-gray-500 uppercase mb-2";
+      const b = "w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-[12px] text-white";
+      return React.createElement('div', { className: "screen", style: { background: '#0a0a0a', display: 'flex', flexDirection: 'column', height: '100%' } },
+        React.createElement('div', { className: "p-4 border-b border-white/5" },
+          React.createElement('div', { className: "flex items-center justify-between mb-4" },
+            React.createElement('h1', { className: "text-xl font-black text-white uppercase italic" }, "Sigil Craft"),
+            React.createElement('i', { className: "fa-solid fa-wand-magic-sparkles text-indigo-500 text-xl" })
+          ),
+          React.createElement('div', { className: "flex gap-2 p-1 bg-white/5 rounded-xl" },
+            React.createElement('button', { onClick: () => h('mode', AppMode.SIGIL), className: "flex-1 py-2.5 text-[10px] font-black uppercase rounded-lg " + (c.mode === AppMode.SIGIL ? 'bg-indigo-600 text-white' : 'text-gray-500') }, "Сигилы"),
+            React.createElement('button', { onClick: () => h('mode', AppMode.ASSOCIATION), className: "flex-1 py-2.5 text-[10px] font-black uppercase rounded-lg " + (c.mode === AppMode.ASSOCIATION ? 'bg-indigo-600 text-white' : 'text-gray-500') }, "Ассоциации")
+          )
+        ),
+        React.createElement('div', { className: "flex-1 overflow-y-auto p-4 space-y-4" },
+          React.createElement('div', null,
+            React.createElement('div', { className: l }, "Название коллекции (опционально)"),
+            React.createElement('input', { type: 'text', value: c.collectionName, onChange: e => h('collectionName', e.target.value), placeholder: "Например: Хроники Этериса", className: b })
+          ),
+          React.createElement('div', { className: "flex items-center gap-2 bg-white/5 p-3 rounded-lg" },
+            React.createElement('input', { type: "checkbox", id: "showLabel", checked: c.showCardLabel, onChange: e => h('showCardLabel', e.target.checked), className: "w-5 h-5 accent-indigo-500" }),
+            React.createElement('label', { htmlFor: "showLabel", className: "text-[12px] text-gray-300" }, "Показать название на карте")
+          ),
+          c.mode === AppMode.SIGIL ? React.createElement('div', { className: "space-y-4" },
+            React.createElement('div', null,
+              React.createElement('div', { className: l }, "Символ"),
+              React.createElement('select', { value: c.selectedSymbolId, onChange: s, className: b },
+                SIGIL_DATABASE.map(s => React.createElement('option', { key: s.id, value: s.id }, "#" + s.id.toString().padStart(3, '0') + " — " + s.nameRu))
+              )
+            ),
+            React.createElement('div', null,
+              React.createElement('div', { className: l }, React.createElement('span', null, "Толщина"), React.createElement('span', { className: "text-indigo-400 text-[9px] float-right" }, c.lineThickness.toFixed(1) + "px")),
+              React.createElement('input', { type: "range", min: "1", max: "5", step: "0.1", value: c.lineThickness, onChange: e => h('lineThickness', parseFloat(e.target.value)), className: "w-full accent-indigo-500 h-2" })
+            ),
+            React.createElement('div', null,
+              React.createElement('div', { className: l }, React.createElement('span', null, "Энергия"), React.createElement('span', { className: "text-indigo-400 text-[9px] float-right" }, c.glowIntensity + "%")),
+              React.createElement('input', { type: "range", min: "0", max: "100", value: c.glowIntensity, onChange: e => h('glowIntensity', parseInt(e.target.value)), className: "w-full accent-indigo-500 h-2" })
+            ),
+            React.createElement('div', null,
+              React.createElement('div', { className: l }, React.createElement('span', null, "Масштаб"), React.createElement('span', { className: "text-indigo-400 text-[9px] float-right" }, c.symbolSize + "%")),
+              React.createElement('input', { type: "range", min: "20", max: "90", value: c.symbolSize, onChange: e => h('symbolSize', parseInt(e.target.value)), className: "w-full accent-indigo-500 h-2" })
+            )
+          ) : React.createElement('div', null,
+            React.createElement('div', { className: l }, "Концепт"),
+            React.createElement('textarea', { value: c.conceptWord, onChange: e => h('conceptWord', e.target.value), placeholder: "Опиши идею...", className: b + " min-h-[100px] resize-none" })
+          ),
+          React.createElement('div', null,
+            React.createElement('div', { className: l }, "Стиль"),
+            React.createElement('select', { value: c.renderingStyle, onChange: e => h('renderingStyle', e.target.value), className: b },
+              Object.values(RenderingStyle).map(v => React.createElement('option', { key: v, value: v }, v))
+            )
+          ),
+          React.createElement('div', null,
+            React.createElement('div', { className: l }, "Режим цвета"),
+            React.createElement('div', { className: "flex gap-2" },
+              React.createElement('button', { onClick: () => h('colorMode', 'full'), className: "flex-1 py-2.5 text-[10px] font-bold uppercase rounded-lg " + (c.colorMode === 'full' ? 'bg-indigo-600 text-white' : 'bg-white/5 text-gray-500') }, "FULL"),
+              React.createElement('button', { onClick: () => h('colorMode', 'bw'), className: "flex-1 py-2.5 text-[10px] font-bold uppercase rounded-lg " + (c.colorMode === 'bw' ? 'bg-indigo-600 text-white' : 'bg-white/5 text-gray-500') }, "B&W"),
+              React.createElement('button', { onClick: () => h('colorMode', 'energy'), className: "flex-1 py-2.5 text-[10px] font-bold uppercase rounded-lg " + (c.colorMode === 'energy' ? 'bg-indigo-600 text-white' : 'bg-white/5 text-gray-500') }, "Энергия")
+            )
+          ),
+          React.createElement('div', null,
+            React.createElement('div', { className: l }, "Вибрация"),
+            React.createElement('select', { value: c.magicVibe, onChange: e => h('magicVibe', e.target.value), className: b },
+              Object.values(MagicVibe).map(v => React.createElement('option', { key: v, value: v }, v))
+            )
+          ),
+          React.createElement('div', null,
+            React.createElement('div', { className: l }, "Фон"),
+            React.createElement('select', { value: c.backgroundPreset, onChange: e => h('backgroundPreset', e.target.value), className: b },
+              Object.values(BackgroundPreset).map(v => React.createElement('option', { key: v, value: v }, v))
+            )
+          ),
+          React.createElement('div', null,
+            React.createElement('div', { className: l }, "Цвет ауры"),
+            React.createElement('input', { type: "color", value: c.auraColor, onChange: e => h('auraColor', e.target.value), className: "w-full h-12 rounded-lg cursor-pointer" })
+          ),
+          React.createElement('div', { className: "flex items-center gap-2" },
+            React.createElement('input', { type: "checkbox", id: "b1", checked: c.showBorder, onChange: e => h('showBorder', e.target.checked), className: "w-5 h-5 accent-indigo-500" }),
+            React.createElement('label', { htmlFor: "b1", className: "text-[12px]" }, "Рамка")
+          ),
+          React.createElement('div', { className: "flex items-center gap-2" },
+            React.createElement('input', { type: "checkbox", id: "b2", checked: c.showInscription, onChange: e => h('showInscription', e.target.checked), className: "w-5 h-5 accent-indigo-500" }),
+            React.createElement('label', { htmlFor: "b2", className: "text-[12px]" }, "Гравировка")
+          )
+        ),
+        React.createElement('div', { className: "p-4 border-t border-white/5" },
+          React.createElement('button', { onClick: g, className: "btn-primary" },
+            React.createElement('i', { className: "fa-solid fa-bolt mr-2" }),
+            "СОЗДАТЬ"
+          )
+        )
+      );
+    };
+    const Loading = () => React.createElement('div', { className: "screen", style: { background: '#050505', display: 'flex', alignItems: 'center', justifyContent: 'center' } },
+      React.createElement('div', { style: { textAlign: 'center' } },
+        React.createElement('div', { style: { width: '120px', height: '120px', margin: '0 auto 24px' } },
+          React.createElement('svg', { className: "w-full h-full animate-spin", viewBox: "0 0 100 100" },
+            React.createElement('circle', { cx: "50", cy: "50", r: "45", fill: "none", stroke: "currentColor", strokeWidth: "3", className: "text-indigo-500", strokeDasharray: "60 180", strokeLinecap: "round" })
+          )
+        ),
+        React.createElement('div', { style: { fontSize: '16px', fontWeight: 'bold', color: '#667eea', textTransform: 'uppercase', letterSpacing: '0.3em', animation: 'pulse 2s infinite' } }, "Синтез...")
+      )
+    );
+    const Result = ({ result: r, config: c, onBack: b, cardCount: n }) => {
+      const exp = () => {
+        const link = document.createElement('a');
+        link.href = r.imageUrl;
+        const fname = c.collectionName ? c.collectionName.replace(/\s+/g, '-') + "-" + c.symbolName + "-" + Date.now() + ".png" : c.symbolName + "-" + Date.now() + ".png";
+        link.download = fname;
+        link.click();
+        if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+      };
+      return React.createElement('div', { className: "screen", style: { background: '#050505', display: 'flex', flexDirection: 'column', height: '100%' } },
+        React.createElement('div', { className: "flex-1 flex items-center justify-center p-4" },
+          React.createElement('div', { className: "relative w-full max-w-[90vw] aspect-square rounded-2xl overflow-hidden bg-black border border-white/10" },
+            React.createElement('img', { src: r.imageUrl, className: "w-full h-full object-cover" }),
+            c.showCardLabel && React.createElement('div', { className: "card-label" },
+              React.createElement('div', { className: "card-label-text" },
+                c.collectionName && React.createElement('div', { style: { fontWeight: 'bold', marginBottom: '2px' } }, c.collectionName.toUpperCase()),
+                React.createElement('div', null, c.element + " • " + c.symbolName),
+                React.createElement('div', { style: { fontSize: '8px', marginTop: '2px', opacity: 0.7 } }, n + "/66 • 1:1")
+              )
+            )
+          )
+        ),
+        React.createElement('div', { className: "p-4 space-y-3" },
+          React.createElement('button', { onClick: exp, className: "btn-primary" },
+            React.createElement('i', { className: "fa-solid fa-download mr-2" }),
+            "СКАЧАТЬ"
+          ),
+          React.createElement('button', { onClick: b, className: "btn-secondary" },
+            React.createElement('i', { className: "fa-solid fa-arrow-left mr-2" }),
+            "К НАСТРОЙКАМ"
+          )
+        )
+      );
+    };
+    const F = SIGIL_DATABASE[0];
+    const App = () => {
+      const [c, setC] = useState({ mode: AppMode.SIGIL, collectionName: '', showCardLabel: false, colorMode: 'full', renderingStyle: RenderingStyle.CONVEX_3D, magicVibe: MagicVibe.GLOWING, backgroundPreset: BackgroundPreset.DARK_MINIMAL, showBorder: true, showInscription: false, selectedSymbolId: F.id, symbolName: F.nameRu, element: F.element, visualTz: F.visualTz, auraColor: F.baseColor, lineThickness: 2, glowIntensity: 20, symbolSize: 55, conceptWord: '' });
+      const [screen, setScreen] = useState('settings');
+      const [r, setR] = useState(null);
+      const [e, setE] = useState(null);
+      const [m, setM] = useState(!window.getApiKey());
+      const [n, setN] = useState(1);
+      const handleGen = async () => {
+        const k = window.getApiKey();
+        if (!k) { setM(true); return; }
+        setScreen('loading');
+        setE(null);
+        try {
+          const res = await gen(c, k);
+          setR(res);
+          setN(p => p + 1);
+          setScreen('result');
+          if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        } catch (err) {
+          setE(err.message);
+          setScreen('settings');
+          if (tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
+        }
+      };
+      const back = () => { setScreen('settings'); setR(null); };
+      return React.createElement('div', { style: { position: 'relative', width: '100%', height: '100vh', overflow: 'hidden' } },
+        m && React.createElement(M, { onSubmit: () => setM(false) }),
+        screen === 'settings' && React.createElement(Settings, { config: c, onChange: setC, onGenerate: handleGen }),
+        screen === 'loading' && React.createElement(Loading),
+        screen === 'result' && r && React.createElement(Result, { result: r, config: c, onBack: back, cardCount: n }),
+        e && React.createElement('div', { style: { position: 'fixed', bottom: '20px', left: '20px', right: '20px', background: 'rgba(220, 38, 38, 0.9)', padding: '16px', borderRadius: '12px', color: 'white', fontSize: '13px', textAlign: 'center', zIndex: 10000 } }, e)
+      );
+    };
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(React.createElement(App));
+    console.log('SigilCraft Mobile запущен!');
+  </script>
+</body>
+</html>
