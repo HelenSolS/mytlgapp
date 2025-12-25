@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>SigilCraft Mobile</title>
+
+  <!-- Telegram WebApp SDK -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <style>
+    /* Базовые стили */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #050505;
+      color: #e5e5e5;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      touch-action: manipulation;
+    }
+
+    /* Скроллбар */
+    ::-webkit-scrollbar {
+      width: 3px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #444;
+      border-radius: 10px;
+    }
+
+    /* Модальное окно */
+    .modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.95);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      padding: 20px;
+    }
+
+    .modal-content {
+      background: #1a1a1a;
+      padding: 24px;
+      border-radius: 20px;
+      max-width: 400px;
+      width: 100%;
+      border: 1px solid rgba(102, 126, 234, 0.3);
+    }
+
+    .modal h2 {
+      font-size: 20px;
+      font-weight: bold;
+      margin-bottom: 12px;
+    }
+
+    .modal p {
+      font-size: 13px;
+      color: #888;
+      margin-bottom: 8px;
+    }
+
+    .modal a {
+      color: #667eea;
+      font-size: 13px;
+      text-decoration: underline;
+    }
+
+    .modal input {
+      width: 100%;
+      padding: 12px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      color: white;
+      font-size: 13px;
+      margin-top: 12px;
+    }
+
+    .modal button {
+      width: 100%;
+      padding: 12px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-weight: 600;
+      margin-top: 12px;
+      cursor: pointer;
+    }
+
+    /* Экраны */
+    .screen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      transition: transform 0.3s ease, opacity 0.3s ease;
+    }
+
+    .screen.hidden {
+      transform: translateX(100%);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .screen.prev {
+      transform: translateX(-100%);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    /* Кнопки */
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 16px;
+      border-radius: 16px;
+      font-weight: bold;
+      font-size: 16px;
+      text-align: center;
+      cursor: pointer;
+      border: none;
+      width: 100%;
+      box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.1);
+      color: white;
+      padding: 14px;
+      border-radius: 14px;
+      font-weight: 600;
+      font-size: 14px;
+      text-align: center;
+      cursor: pointer;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    /* Подпись на карте */
+    .card-label {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: linear-gradient(to top, rgba(0, 0, 0, 0.9), transparent);
+      padding: 16px 12px 12px;
+      text-align: center;
+    }
+
+    .card-label-text {
+      font-size: 10px;
+      color: rgba(255, 255, 255, 0.8);
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      line-height: 1.4;
+    }
+  </style>
+
+  <!-- React Import Map -->
+  <script type="importmap">
+    {
+      "imports": {
+        "react": "https://esm.sh/react@19.0.0",
+        "react-dom/client": "https://esm.sh/react-dom@19.0.0/client"
+      }
+    }
+  </script>
+</head>
+
+<body>
+  <div id="root"></div>
+
+  <script>
+    // ========================================
+    // TELEGRAM WEBAPP ИНИЦИАЛИЗАЦИЯ
+    // ========================================
+    const tg = window.Telegram?.WebApp;
+    if (tg) {
+      tg.ready();
+      tg.expand();
+      if (tg.themeParams?.bg_color) {
+        document.body.style.backgroundColor = tg.themeParams.bg_color;
+      }
+    }
+
+    // ========================================
+    // КОНСТАНТЫ
+    // ========================================
+    window.AppMode = {
+      SIGIL: 'Сигилы',
+      ASSOCIATION: 'Ассоциации'
+    };
+
+    window.RenderingStyle = {
+      CARTOON: 'Карикатурный',
+      COMIC: 'Комикс',
+      PENCIL: 'Карандаш',
+      INK: 'Тушь',
+      SKETCH: 'Эскиз',
+      KAWAII: 'Kawaii',
+      HYPERREALISM: 'Гиперреализм',
+      SCHEMATIC: 'Чертеж',
+      CONVEX_3D: '3D рельеф',
+      REALISM: 'Фотореализм'
+    };
+
+    window.MagicVibe = {
+      GLOWING: 'Магическое сияние',
+      MYSTERIOUS: 'Загадочный шепот',
+      ETHEREAL: 'Эфирная пыль'
+    };
+
+    window.BackgroundPreset = {
+      DARK_MINIMAL: 'Темный минимализм',
+      LIGHT_MINIMAL: 'Светлый минимализм',
+      COSMIC_NEBULA: 'Космическая туманность',
+      HOLOGRAPHIC_GRADIENT: 'Голографический градиент',
+      ETHEREAL_MIST: 'Эфирный туман',
+      OBSIDIAN_CHAMBER: 'Обсидиановая камера'
+    };
+
+    // ========================================
+    // БАЗА ДАННЫХ СИМВОЛОВ (66 штук)
+    // ========================================
+    window.SIGIL_DATABASE = [
+  {
+    "id": 1,
+    "name": "The Whisper",
+    "nameRu": "Шёпот",
+    "element": "Air",
+    "visualTz": "Изогнутая тонкая линия, мягко расходящаяся на две ветви",
+    "baseColor": "#87CEEB"
+  },
+  {
+    "id": 2,
+    "name": "Gate of Winds",
+    "nameRu": "Врата Ветров",
+    "element": "Air",
+    "visualTz": "Две параллельные вертикальные линии, между ними вихревое смещение",
+    "baseColor": "#87CEEB"
+  },
+  {
+    "id": 3,
+    "name": "The Signal",
+    "nameRu": "Сигнал",
+    "element": "Air",
+    "visualTz": "Круг + 3 расходящиеся луча, как маяк",
+    "baseColor": "#87CEEB"
+  },
+  {
+    "id": 4,
+    "name": "Feather of Direction",
+    "nameRu": "Перо",
+    "element": "Air",
+    "visualTz": "Стилизованное перо, тонкая линия",
+    "baseColor": "#87CEEB"
+  },
+  {
+    "id": 5,
+    "name": "Twin Winds",
+    "nameRu": "Двойные Ветры",
+    "element": "Air",
+    "visualTz": "Два симметричных вихря",
+    "baseColor": "#87CEEB"
+  },
+  {
+    "id": 6,
+    "name": "The Messenger",
+    "nameRu": "Посланник",
+    "element": "Air",
+    "visualTz": "Стрела света, пересекающая круг",
+    "baseColor": "#87CEEB"
+  },
+  {
+    "id": 7,
+    "name": "The Echo",
+    "nameRu": "Эхо",
+    "element": "Air",
+    "visualTz": "Три повторяющиеся дуги",
+    "baseColor": "#87CEEB"
+  },
+  {
+    "id": 8,
+    "name": "The Veil",
+    "nameRu": "Покров",
+    "element": "Air",
+    "visualTz": "Мягкая полупрозрачная форма",
+    "baseColor": "#87CEEB"
+  },
+  {
+    "id": 9,
+    "name": "Turning Breath",
+    "nameRu": "Разворот Ветра",
+    "element": "Air",
+    "visualTz": "Спираль, резко меняющая направление",
+    "baseColor": "#87CEEB"
+  },
+  {
+    "id": 10,
+    "name": "The Calling",
+    "nameRu": "Зов",
+    "element": "Air",
+    "visualTz": "Вертикальный луч, расширяющийся сверху",
+    "baseColor": "#87CEEB"
+  },
+  {
+    "id": 11,
+    "name": "The Watcher",
+    "nameRu": "Наблюдатель",
+    "element": "Air",
+    "visualTz": "Глаз без зрачка, контур + дуга света",
+    "baseColor": "#87CEEB"
+  },
+  {
+    "id": 12,
+    "name": "The Ripple",
+    "nameRu": "Рябь",
+    "element": "Water",
+    "visualTz": "Концентрические круги от точки",
+    "baseColor": "#00CED1"
+  },
+  {
+    "id": 13,
+    "name": "Deep Tide",
+    "nameRu": "Глубокий Прилив",
+    "element": "Water",
+    "visualTz": "Две мягкие волны",
+    "baseColor": "#00CED1"
+  },
+  {
+    "id": 14,
+    "name": "Mirror Water",
+    "nameRu": "Водное Зеркало",
+    "element": "Water",
+    "visualTz": "Горизонтальная линия + отражение",
+    "baseColor": "#00CED1"
+  },
+  {
+    "id": 15,
+    "name": "Heartstream",
+    "nameRu": "Поток Сердца",
+    "element": "Water",
+    "visualTz": "Вертикальная линия, текущая вниз",
+    "baseColor": "#00CED1"
+  },
+  {
+    "id": 16,
+    "name": "The Bond",
+    "nameRu": "Узел",
+    "element": "Water",
+    "visualTz": "Две линии, переплетающиеся узлом",
+    "baseColor": "#00CED1"
+  },
+  {
+    "id": 17,
+    "name": "The Drift",
+    "nameRu": "Снос Течения",
+    "element": "Water",
+    "visualTz": "Стрела, отклонённая течением",
+    "baseColor": "#00CED1"
+  },
+  {
+    "id": 18,
+    "name": "The Vessel",
+    "nameRu": "Чаша",
+    "element": "Water",
+    "visualTz": "Полукруг снизу",
+    "baseColor": "#00CED1"
+  },
+  {
+    "id": 19,
+    "name": "Undercurrent",
+    "nameRu": "Подводное Течение",
+    "element": "Water",
+    "visualTz": "Волна под линией",
+    "baseColor": "#00CED1"
+  },
+  {
+    "id": 20,
+    "name": "Tearline",
+    "nameRu": "Линия Слёзы",
+    "element": "Water",
+    "visualTz": "Вытянутая вниз капля",
+    "baseColor": "#00CED1"
+  },
+  {
+    "id": 21,
+    "name": "Resonance",
+    "nameRu": "Резонанс",
+    "element": "Water",
+    "visualTz": "Две параллельные волны",
+    "baseColor": "#00CED1"
+  },
+  {
+    "id": 22,
+    "name": "Memory Pool",
+    "nameRu": "Озеро Памяти",
+    "element": "Water",
+    "visualTz": "Овал с отражением",
+    "baseColor": "#00CED1"
+  },
+  {
+    "id": 23,
+    "name": "The Spark",
+    "nameRu": "Искра",
+    "element": "Fire",
+    "visualTz": "Вспышка: линия + расщепление",
+    "baseColor": "#FF8C00"
+  },
+  {
+    "id": 24,
+    "name": "The Strike",
+    "nameRu": "Удар",
+    "element": "Fire",
+    "visualTz": "Две линии сталкиваются",
+    "baseColor": "#FF8C00"
+  },
+  {
+    "id": 25,
+    "name": "Ember Road",
+    "nameRu": "Дорога Углей",
+    "element": "Fire",
+    "visualTz": "Линия + точечные угли",
+    "baseColor": "#FF8C00"
+  },
+  {
+    "id": 26,
+    "name": "Phoenix Sign",
+    "nameRu": "Феникс",
+    "element": "Fire",
+    "visualTz": "Линия вверх дугой, огненное перо",
+    "baseColor": "#FF8C00"
+  },
+  {
+    "id": 27,
+    "name": "The Clash",
+    "nameRu": "Столкновение",
+    "element": "Fire",
+    "visualTz": "X-подобная динамика",
+    "baseColor": "#FF8C00"
+  },
+  {
+    "id": 28,
+    "name": "The Flare",
+    "nameRu": "Вспышка",
+    "element": "Fire",
+    "visualTz": "Луч, резко расширяющийся",
+    "baseColor": "#FF8C00"
+  },
+  {
+    "id": 29,
+    "name": "The Torch",
+    "nameRu": "Факел",
+    "element": "Fire",
+    "visualTz": "Вертикальная линия, огненная корона",
+    "baseColor": "#FF8C00"
+  },
+  {
+    "id": 30,
+    "name": "The Break",
+    "nameRu": "Прорыв",
+    "element": "Fire",
+    "visualTz": "Разрыв линии с выходом",
+    "baseColor": "#FF8C00"
+  },
+  {
+    "id": 31,
+    "name": "Stormfront",
+    "nameRu": "Передовая Бури",
+    "element": "Fire",
+    "visualTz": "Волнистая линия во всплеск",
+    "baseColor": "#FF8C00"
+  },
+  {
+    "id": 32,
+    "name": "Burning Choice",
+    "nameRu": "Обжигающий Выбор",
+    "element": "Fire",
+    "visualTz": "Две линии + точка выбора",
+    "baseColor": "#FF8C00"
+  },
+  {
+    "id": 33,
+    "name": "Inferno Path",
+    "nameRu": "Путь Пламени",
+    "element": "Fire",
+    "visualTz": "Вертикальный столб сегментами",
+    "baseColor": "#FF8C00"
+  },
+  {
+    "id": 34,
+    "name": "Rootmark",
+    "nameRu": "Корень",
+    "element": "Earth",
+    "visualTz": "Y-образная корневая линия",
+    "baseColor": "#808000"
+  },
+  {
+    "id": 35,
+    "name": "Stone Gate",
+    "nameRu": "Каменные Врата",
+    "element": "Earth",
+    "visualTz": "Две тяжёлые формы-врата",
+    "baseColor": "#808000"
+  },
+  {
+    "id": 36,
+    "name": "Harvest Line",
+    "nameRu": "Линия Урожая",
+    "element": "Earth",
+    "visualTz": "Горизонтальная линия со штрихами",
+    "baseColor": "#808000"
+  },
+  {
+    "id": 37,
+    "name": "The Shelter",
+    "nameRu": "Убежище",
+    "element": "Earth",
+    "visualTz": "Полукруг-накрытие",
+    "baseColor": "#808000"
+  },
+  {
+    "id": 38,
+    "name": "The Architect",
+    "nameRu": "Архитектор",
+    "element": "Earth",
+    "visualTz": "Геометричная конструкция",
+    "baseColor": "#808000"
+  },
+  {
+    "id": 39,
+    "name": "The Anchor",
+    "nameRu": "Якорь",
+    "element": "Earth",
+    "visualTz": "Вертикальная линия + расширение",
+    "baseColor": "#808000"
+  },
+  {
+    "id": 40,
+    "name": "Summit Stone",
+    "nameRu": "Камень Вершины",
+    "element": "Earth",
+    "visualTz": "Пирамида/треугольник",
+    "baseColor": "#808000"
+  },
+  {
+    "id": 41,
+    "name": "The Burden",
+    "nameRu": "Ноша",
+    "element": "Earth",
+    "visualTz": "Линия + тяжёлая форма сверху",
+    "baseColor": "#808000"
+  },
+  {
+    "id": 42,
+    "name": "Golden Vein",
+    "nameRu": "Золотая Жила",
+    "element": "Earth",
+    "visualTz": "Диагональная трещина",
+    "baseColor": "#808000"
+  },
+  {
+    "id": 43,
+    "name": "The Pact",
+    "nameRu": "Пакт",
+    "element": "Earth",
+    "visualTz": "Две параллельные линии соединены",
+    "baseColor": "#808000"
+  },
+  {
+    "id": 44,
+    "name": "Foundation Shift",
+    "nameRu": "Сдвиг Фундамента",
+    "element": "Earth",
+    "visualTz": "Горизонтальная линия, излом",
+    "baseColor": "#808000"
+  },
+  {
+    "id": 45,
+    "name": "Thread of Fate",
+    "nameRu": "Нить Судьбы",
+    "element": "Aether",
+    "visualTz": "Вертикальная линия ровная",
+    "baseColor": "#FFD700"
+  },
+  {
+    "id": 46,
+    "name": "Convergence",
+    "nameRu": "Схождение",
+    "element": "Aether",
+    "visualTz": "Две линии в точку",
+    "baseColor": "#FFD700"
+  },
+  {
+    "id": 47,
+    "name": "Chrono Gate",
+    "nameRu": "Врата Времени",
+    "element": "Aether",
+    "visualTz": "Круг + вертикальная ось",
+    "baseColor": "#FFD700"
+  },
+  {
+    "id": 48,
+    "name": "Ancestral Echo",
+    "nameRu": "Эхо Предков",
+    "element": "Aether",
+    "visualTz": "Волнистая линия + эхо",
+    "baseColor": "#FFD700"
+  },
+  {
+    "id": 49,
+    "name": "Destiny Mark",
+    "nameRu": "Знак Предназначения",
+    "element": "Aether",
+    "visualTz": "Стрела вверх тонкая",
+    "baseColor": "#FFD700"
+  },
+  {
+    "id": 50,
+    "name": "Veilbreaker",
+    "nameRu": "Разрывающая Покров",
+    "element": "Aether",
+    "visualTz": "Разлом линии + световой выход",
+    "baseColor": "#FFD700"
+  },
+  {
+    "id": 51,
+    "name": "Great Crossing",
+    "nameRu": "Великое Пересечение",
+    "element": "Aether",
+    "visualTz": "Перекрёсток двух линий",
+    "baseColor": "#FFD700"
+  },
+  {
+    "id": 52,
+    "name": "Origin Flame",
+    "nameRu": "Изначённое Пламя",
+    "element": "Aether",
+    "visualTz": "Вертикальный огненный язык",
+    "baseColor": "#FFD700"
+  },
+  {
+    "id": 53,
+    "name": "The Keeper",
+    "nameRu": "Хранитель",
+    "element": "Aether",
+    "visualTz": "Округлый щит",
+    "baseColor": "#FFD700"
+  },
+  {
+    "id": 54,
+    "name": "Final Sign",
+    "nameRu": "Последний Знак",
+    "element": "Aether",
+    "visualTz": "Круг + точка выхода сверху",
+    "baseColor": "#FFD700"
+  },
+  {
+    "id": 55,
+    "name": "First Light",
+    "nameRu": "Первый Свет",
+    "element": "Aether",
+    "visualTz": "Точка + расходящиеся лучи",
+    "baseColor": "#FFD700"
+  },
+  {
+    "id": 56,
+    "name": "Mirror Key",
+    "nameRu": "Ключ Зеркала",
+    "element": "Weaving",
+    "visualTz": "Две симметричные вертикальные линии",
+    "baseColor": "#C0C0C0"
+  },
+  {
+    "id": 57,
+    "name": "Shadow Key",
+    "nameRu": "Ключ Тени",
+    "element": "Weaving",
+    "visualTz": "Перевёрнутая дуга",
+    "baseColor": "#696969"
+  },
+  {
+    "id": 58,
+    "name": "Light Key",
+    "nameRu": "Ключ Света",
+    "element": "Weaving",
+    "visualTz": "Крестик света",
+    "baseColor": "#FFFFFF"
+  },
+  {
+    "id": 59,
+    "name": "Amplifier",
+    "nameRu": "Усилитель",
+    "element": "Weaving",
+    "visualTz": "Две расходящиеся линии",
+    "baseColor": "#FFD700"
+  },
+  {
+    "id": 60,
+    "name": "Divider",
+    "nameRu": "Разделитель",
+    "element": "Weaving",
+    "visualTz": "Вертикальная линия делящая",
+    "baseColor": "#C0C0C0"
+  },
+  {
+    "id": 61,
+    "name": "Delay Mark",
+    "nameRu": "Задержка",
+    "element": "Weaving",
+    "visualTz": "Линия + стоп-точка",
+    "baseColor": "#4682B4"
+  },
+  {
+    "id": 62,
+    "name": "Acceleration Mark",
+    "nameRu": "Ускорение",
+    "element": "Weaving",
+    "visualTz": "Линия сужающаяся",
+    "baseColor": "#FFD700"
+  },
+  {
+    "id": 63,
+    "name": "Inversion",
+    "nameRu": "Инверсия",
+    "element": "Weaving",
+    "visualTz": "Изогнутая зеркальная форма",
+    "baseColor": "#C0C0C0"
+  },
+  {
+    "id": 64,
+    "name": "Echo Seal",
+    "nameRu": "Печать Эха",
+    "element": "Weaving",
+    "visualTz": "Две смещённые линии",
+    "baseColor": "#C0C0C0"
+  },
+  {
+    "id": 65,
+    "name": "Bridge",
+    "nameRu": "Мост",
+    "element": "Weaving",
+    "visualTz": "Две точки соединены дугой",
+    "baseColor": "#C0C0C0"
+  },
+  {
+    "id": 66,
+    "name": "Catalyst",
+    "nameRu": "Катализатор",
+    "element": "Weaving",
+    "visualTz": "Точка + расходящиеся лучи",
+    "baseColor": "#FFD700"
+  }
+];
+
+    // ========================================
+    // СИСТЕМА ЗАГРУЗКИ API КЛЮЧА
+    // ========================================
+    window.TEAM_API_KEY = null; // Будет загружен из файла
+
+    // Функция загрузки командного ключа
+    async function loadTeamApiKey() {
+      try {
+        // Пробуем загрузить из api-key.txt
+        const response = await fetch('api-key.txt');
+        if (response.ok) {
+          const key = await response.text();
+          const trimmedKey = key.trim();
+          if (trimmedKey && trimmedKey !== 'AIzaSyYOUR_API_KEY_HERE') {
+            window.TEAM_API_KEY = trimmedKey;
+            console.log('✅ Командный ключ загружен из api-key.txt');
+            return true;
+          }
+        }
+      } catch (e) {
+        console.log('⚠️ Файл api-key.txt не найден, пробуем config.js...');
+      }
+
+      // Если api-key.txt не найден, пробуем config.js
+      try {
+        const script = document.createElement('script');
+        script.src = 'config.js';
+        await new Promise((resolve, reject) => {
+          script.onload = resolve;
+          script.onerror = reject;
+          document.head.appendChild(script);
+        });
+        if (window.TEAM_API_KEY && window.TEAM_API_KEY !== 'AIzaSyYOUR_API_KEY_HERE') {
+          console.log('✅ Командный ключ загружен из config.js');
+          return true;
+        }
+      } catch (e) {
+        console.log('⚠️ Файл config.js не найден');
+      }
+
+      console.log('ℹ️ Командный ключ не найден, будет запрошен у пользователя');
+      return false;
+    }
+
+    // Функции работы с ключами
+    window.getApiKey = () => {
+      // Приоритет: командный ключ → личный ключ из localStorage
+      if (window.TEAM_API_KEY) return window.TEAM_API_KEY;
+      return localStorage.getItem('gemini_api_key');
+    };
+
+    window.setApiKey = (key) => {
+      localStorage.setItem('gemini_api_key', key);
+    };
+
+    // Загружаем командный ключ при старте
+    loadTeamApiKey().then(() => {
+      console.log('🚀 SigilCraft готов к работе!');
+    });
+  </script>
+
+  <!-- Попытка загрузить config.js (если есть) -->
+  <script src="config.js" onerror="console.log('config.js не найден')"></script>
+
+  <!-- React приложение (будет в отдельном файле app.js) -->
+  <script type="module" src="app.js"></script>
+</body>
+</html>
